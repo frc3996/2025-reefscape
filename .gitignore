@@ -169,3 +169,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+simgui-ds.json
+simgui-window.json
+simgui.json
+ctre_sim/*.dat
+tests/ctre_sim/*.dat
