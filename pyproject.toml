@@ -16,7 +16,9 @@ robotpy_extras = [
     "magicbot",
     "navx",
     "sim",
-    "numpy"
+    "numpy",
+    "apriltag",
+    "pathplannerlib",
     # "apriltag"
     # "commands2"
     # "cscore"

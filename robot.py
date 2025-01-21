@@ -235,6 +235,15 @@ class MyRobot(MagicRobot):
     def teleopPeriodic(self):
         """Cette fonction est appelée de façon périodique lors du mode téléopéré."""
 
+        if self.gamepad_pilote.getRawButton(1):
+            print("Pressed!")
+            self.gamepad_pilote.setOutputs(0)
+            self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 1)
+        else:
+            print("Released!")
+            self.gamepad_pilote.setOutputs(1)
+            self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 0)
+
         self.drivetrain.set_controller_values(
             self.gamepad_pilote.getLeftY(),
             self.gamepad_pilote.getLeftX(),
