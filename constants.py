@@ -19,8 +19,11 @@ class AnalogIO(IntEnum):
 
 class DigitalIO(IntEnum):
     """ Définition des senseurs digitales"""
-    CLIMBER_LIMIT_SWITCH = 1
     PIXY_VALID = 0
+    CLIMB_CAGE_IN_LIMITSWITCH_1 = 1
+    CLIMB_CAGE_IN_LIMITSWITCH_2 = 2
+    CLIMB_PISTON_OUT_LIMITSWITCH_1 = 3
+    CLIMB_PISTON_OUT_LIMITSWITCH_2 = 4
 
 
 class CANIds(IntEnum):
@@ -40,3 +43,13 @@ class CANIds(IntEnum):
     SWERVE_ROTATE_RR = 22
     SWERVE_DRIVE_RR = 21
     SWERVE_CANCODER_RR = 13
+
+
+    CLIMB_GUIDE_MOTOR = 50
+    CLIMB_RAISE_MOTOR_MAIN = 51
+    CLIMB_RAISE_MOTOR_FOLLOWER = 52
+
+
+class SolenoidChannel(IntEnum):
+    """ Définition des senseurs Analogiques"""
+    CLIMB_PISTON = 0
