@@ -17,7 +17,7 @@ import constants
 import rev
 from magicbot import tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
-from magicbot import StateMachinex
+from magicbot import StateMachine
 
 
 class Climb():
