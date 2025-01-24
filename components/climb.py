@@ -23,7 +23,7 @@ from magicbot import StateMachine
 class Climb():
     max_speed = tunable(0.5)
     __climb_motor_speed = will_reset_to(0)
-    # pneumatic_hub: wpilib.PneumaticHub
+    pneumatic_hub: wpilib.PneumaticHub
 
     def setup(self):
         """
@@ -39,7 +39,7 @@ class Climb():
         self.climb_raise_motor_main.setOpenLoopRampRate(0.5)
         
         # Follower Climb
-        self.climb_raise_motor_follower = rev.CANSparkMax(constants.CANIds.CLIMB_RAISE_MOTOR_FOLLOWER, rev.CANSparkMax.MotorType.kBrushless)
+        self.climb_raise_motor_follower = rev.CANSparkMax(constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.CANSparkMax.MotorType.kBrushless)
         self.climb_raise_motor_follower.follow(self.climb_raise_motor_main)
 
         # Limit switch
@@ -49,7 +49,7 @@ class Climb():
         self.piston_out_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_2)
 
         # Piston
-        # self.piston_solenoid = self.pneumatic_hub.makeSolenoid(constants.SolenoidChannel.CLIMB_PISTON)
+        self.piston_solenoid = self.pneumatic_hub.makeSolenoid(constants.SolenoidChannel.CLIMB_PISTON)
 
     def go_front(self):
         """Move motor shoot position"""
@@ -69,11 +69,11 @@ class Climb():
 
     def open_pistons(self):
         """Ouvre les pistons"""
-        # self.piston_solenoid.set(True)
+        self.piston_solenoid.set(True)
 
     def close_pistons(self):
         """Ferme les pistons"""
-        # self.piston_solenoid.set(False)
+        self.piston_solenoid.set(False)
 
     def cageIn(self):
         """Retourne vrai si la switch1 OU 2 est activé"""

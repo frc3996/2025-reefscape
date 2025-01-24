@@ -14,14 +14,14 @@ from common.path_helper import PathHelper
 from components.field import FieldLayout
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-# from components.lift import Lift
-# from components.intake import Intake
+from components.lift import Lift
+from components.intake import Intake
 from components.swervedrive import SwerveDrive
 
 
 class ActionStow(StateMachine):
     is_sim: bool
-    # intake: Intake
+    intake: Intake
 
     def engage(
         self, initial_state: StateRef | None = None, force: bool = False
@@ -35,15 +35,15 @@ class ActionStow(StateMachine):
             self.done()
 
         # TODO
-        # self.intake.disable_intake()
+        self.intake.disable_intake()
 
     def done(self):
         super().done()
 
 
 class ActionIntake(StateMachine):
-    # lift: Lift
-    # intake: Intake
+    lift: Lift
+    intake: Intake
     arduino_light: I2CArduinoLight
     drivetrain: SwerveDrive
     pixy: Pixy
