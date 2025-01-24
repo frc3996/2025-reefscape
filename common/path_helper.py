@@ -1,26 +1,42 @@
-import json
 import math
 import os
-from common import tools
+
 import wpilib
+from pathplannerlib.config import ModuleConfig, RobotConfig
 from pathplannerlib.path import PathPlannerPath
+from pathplannerlib.trajectory import PathPlannerTrajectory
 from wpimath import controller, geometry, kinematics, trajectory
 
 import constants
+from common import tools
 from components.swervedrive import SwerveDrive
 
 
 class PathHelper:
-    def __init__(self, drivetrain, path_name, kp=1, ki=0, kd=0, profile_kp=1):
+    kp: int = 1
+    ki: int = 0
+    kd: int = 0
+    profile_kp: int = 1
+
+    def __init__(
+        self,
+        drivetrain,
+        path_name,
+        kp=1,
+        ki=0,
+        kd=0,
+        profile_kp=1,
+    ):
         self.drivetrain: SwerveDrive = drivetrain
-        self.timer = wpilib.Timer()
+        self.timer: wpilib.Timer = wpilib.Timer()
         self.timer.start()
+
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.profile_kp = profile_kp
 
-        self.path = PathPlannerPath.fromPathFile(
+        self.path: PathPlannerPath = PathPlannerPath.fromPathFile(
             os.path.join(
                 os.path.dirname(__file__),
                 "..",
@@ -33,28 +49,36 @@ class PathHelper:
         if tools.is_red():
             self.path = self.path.flipPath()
 
-    def init_path(self, force_robot_starting_position=False):
-        self.trajectory = self.path.getTrajectory(
-            kinematics.ChassisSpeeds(0, 0, 0), geometry.Rotation2d()
+    def init_path(self, force_robot_starting_position: bool = False):
+        """
+        force_robot_starting_position: useful when the starting position
+                                       doesn't allow us to get position from
+                                       the April Tags
+        """
+        robot_config = RobotConfig.fromGUISettings()
+        self.trajectory: PathPlannerTrajectory = self.path.generateTrajectory(
+            kinematics.ChassisSpeeds(0, 0, 0), geometry.Rotation2d(), robot_config
         )
-        self.controller = controller.HolonomicDriveController(
-            controller.PIDController(self.kp, self.ki, self.kd),
-            controller.PIDController(self.profile_kp, 0, 0),
-            controller.ProfiledPIDControllerRadians(
-                1,
-                0,
-                0,
-                trajectory.TrapezoidProfileRadians.Constraints(
-                    constants.MAX_ANGULAR_VEL, constants.MAX_ANGULAR_ACCEL
+        self.controller: controller.HolonomicDriveController = (
+            controller.HolonomicDriveController(
+                controller.PIDController(self.kp, self.ki, self.kd),
+                controller.PIDController(self.profile_kp, 0, 0),
+                controller.ProfiledPIDControllerRadians(
+                    1,
+                    0,
+                    0,
+                    trajectory.TrapezoidProfileRadians.Constraints(
+                        constants.MAX_ANGULAR_VEL, constants.MAX_ANGULAR_ACCEL
+                    ),
                 ),
-            ),
+            )
         )
         self.controller.setEnabled(True)
         self.timer.reset()
 
         if force_robot_starting_position is False:
             return
-        reset_pose = self.trajectory.sample(0).getTargetHolonomicPose()
+        reset_pose = self.trajectory.sample(0).pose
         new_pose = geometry.Pose2d(
             reset_pose.X(),
             reset_pose.Y(),
@@ -75,7 +99,7 @@ class PathHelper:
         current = self.drivetrain.get_odometry_pose()
         current = geometry.Pose2d(current.X(), current.Y(), geometry.Rotation2d(0))
         adjustedSpeeds = self.controller.calculate(
-            current, goal.getTargetHolonomicPose(), 0, geometry.Rotation2d(0)
+            current, goal.pose, 0, geometry.Rotation2d(0)
         )
         # speed = kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(adjustedSpeeds.vx, adjustedSpeeds.vy, adjustedSpeeds.omega, goal.heading)
         self.drivetrain.set_field_relative_automove_value(
@@ -101,7 +125,7 @@ class PathHelper:
         current = self.drivetrain.get_odometry_pose()
         current = geometry.Pose2d(current.X(), current.Y(), geometry.Rotation2d(0))
         adjustedSpeeds = self.controller.calculate(
-            current, goal.getTargetHolonomicPose(), 0, geometry.Rotation2d(0)
+            current, goal.pose, 0, geometry.Rotation2d(0)
         )
         # speed = kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(adjustedSpeeds.vx, adjustedSpeeds.vy, adjustedSpeeds.omega, goal.heading)
         self.drivetrain.set_field_relative_automove_value(
@@ -115,7 +139,7 @@ class PathHelper:
     def distance_to_end(self):
         goal = self.trajectory.getEndState()
         goal.targetHolonomicRotation = geometry.Rotation2d(0)
-        goal = goal.getTargetHolonomicPose()
+        goal = goal.pose
 
         current = self.drivetrain.get_odometry_pose()
         current = geometry.Pose2d(current.X(), current.Y(), geometry.Rotation2d(0))
@@ -124,12 +148,12 @@ class PathHelper:
         return distance
 
     def robot_reached_end_position(
-        self, acceptable_distance_error=0.1, acceptable_angle_error=2
+        self, acceptable_distance_error: float = 0.1, acceptable_angle_error: float = 2
     ):
         goal = self.trajectory.getEndState()
         target_rotation = self.path.getGoalEndState().rotation
         goal.targetHolonomicRotation = geometry.Rotation2d(0)
-        goal = goal.getTargetHolonomicPose()
+        goal = goal.pose
 
         current = self.drivetrain.get_odometry_pose()
         current = geometry.Pose2d(current.X(), current.Y(), geometry.Rotation2d(0))
@@ -145,9 +169,7 @@ class PathHelper:
 
         return True
 
-    def robot_reached_end_angle(
-        self, acceptable_angle_error=2
-    ):
+    def robot_reached_end_angle(self, acceptable_angle_error: float = 2):
         target_rotation = self.path.getGoalEndState().rotation
         angle_error = target_rotation - self.drivetrain.get_odometry_angle()
         angle_error = abs(angle_error.degrees())

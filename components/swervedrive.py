@@ -11,18 +11,17 @@ Angle:  The angle of the robot as measured by a gyroscope. The robot's angle
 import math
 from dataclasses import dataclass
 
-import magicbot
 import ntcore
 import pathplannerlib.telemetry
-from magicbot import feedback
-from navx import AHRS
-from wpimath import (controller, estimator, filter, geometry, kinematics,
-                     trajectory, units)
+from magicbot import tunable, will_reset_to
+from wpimath import controller, estimator, geometry, kinematics, trajectory
+from wpimath.estimator import SwerveDrive4PoseEstimator
 from wpimath.geometry import Rotation2d
 
 import constants
 from common import tools
 from components import swervemodule
+from components.gyro import Gyro
 
 
 @dataclass
@@ -34,59 +33,76 @@ class SwerveDriveConfig:
 class SwerveDrive:
     # Modules injectés depuis le code de ../robot.py
     cfg: SwerveDriveConfig
-    is_sim: bool
     frontLeftModule: swervemodule.SwerveModule
     frontRightModule: swervemodule.SwerveModule
     rearLeftModule: swervemodule.SwerveModule
     rearRightModule: swervemodule.SwerveModule
-    navx: AHRS
     nt: ntcore.NetworkTable
 
-    tmp_speed_factor = magicbot.will_reset_to((1, 1))
-    controller_chassis_speed = magicbot.will_reset_to(kinematics.ChassisSpeeds(0, 0, 0))
-    auto_chassis_speed = magicbot.will_reset_to(None)
-    request_wheel_lock = magicbot.will_reset_to(False)
-    __snap_enabled = magicbot.will_reset_to(False)
-    permanent_snap = False
+    tmp_speed_factor: will_reset_to[tuple[float, float]] = will_reset_to((1, 1))
+    controller_chassis_speed: will_reset_to[kinematics.ChassisSpeeds] = will_reset_to(
+        kinematics.ChassisSpeeds(0, 0, 0)
+    )
+    # auto_chassis_speed: kinematics.ChassisSpeeds | will_reset_to[None] = will_reset_to(
+    #     None
+    # )
+    auto_chassis_speed: kinematics.ChassisSpeeds | will_reset_to[None] = will_reset_to(
+        None
+    )
+    request_wheel_lock: will_reset_to[bool] = will_reset_to(False)
+    __snap_enabled: will_reset_to[bool] = will_reset_to(False)
+    permanent_snap: bool = False
 
-    angle_kp = magicbot.tunable(0.002)
-    angle_ki = magicbot.tunable(0)
-    angle_kd = magicbot.tunable(0.0)
-    angle_max_acc = magicbot.tunable(constants.MAX_ANGULAR_VEL)
-    angle_max_vel = magicbot.tunable(constants.MAX_ANGULAR_ACCEL)
+    angle_kp: tunable[float] = tunable(0.002)
+    angle_ki: tunable[float] = tunable(0)
+    angle_kd: tunable[float] = tunable(0.0)
+    angle_max_acc: tunable[float] = tunable(constants.MAX_ANGULAR_VEL)
+    angle_max_vel: tunable[float] = tunable(constants.MAX_ANGULAR_ACCEL)
+
+    gyro: Gyro
 
     def setup(self):
         """
         Appelé après l'injection
         """
         self.permanent_snap = False
-        self.navx_offset = Rotation2d()
 
         self.__snap_angle = Rotation2d(0)
-        self.sim_angle = Rotation2d(0)
 
-        self.angle_pid = controller.ProfiledPIDController(
-            self.angle_kp,
-            self.angle_ki,
-            self.angle_kd,
-            trajectory.TrapezoidProfile.Constraints(
-                constants.MAX_ANGULAR_VEL, constants.MAX_ANGULAR_ACCEL
-            ),
+        self.angle_pid: controller.ProfiledPIDController = (
+            controller.ProfiledPIDController(
+                self.angle_kp,
+                self.angle_ki,
+                self.angle_kd,
+                trajectory.TrapezoidProfile.Constraints(
+                    constants.MAX_ANGULAR_VEL, constants.MAX_ANGULAR_ACCEL
+                ),
+            )
         )
         self.angle_pid.enableContinuousInput(-180, 180)
         self.angle_pid.setTolerance(-0.2, 0.2)
 
-        self.kinematics = kinematics.SwerveDrive4Kinematics(
-            geometry.Translation2d(self.cfg.base_width / 2, self.cfg.base_length / 2),
-            geometry.Translation2d(self.cfg.base_width / 2, -self.cfg.base_length / 2),
-            geometry.Translation2d(-self.cfg.base_width / 2, self.cfg.base_length / 2),
-            geometry.Translation2d(-self.cfg.base_width / 2, -self.cfg.base_length / 2),
+        self.kinematics: kinematics.SwerveDrive4Kinematics = (
+            kinematics.SwerveDrive4Kinematics(
+                geometry.Translation2d(
+                    self.cfg.base_width / 2, self.cfg.base_length / 2
+                ),
+                geometry.Translation2d(
+                    self.cfg.base_width / 2, -self.cfg.base_length / 2
+                ),
+                geometry.Translation2d(
+                    -self.cfg.base_width / 2, self.cfg.base_length / 2
+                ),
+                geometry.Translation2d(
+                    -self.cfg.base_width / 2, -self.cfg.base_length / 2
+                ),
+            )
         )
 
         # self.odometry = kinematics.SwerveDrive4Odometry(
-        self.odometry = estimator.SwerveDrive4PoseEstimator(
+        self.odometry: SwerveDrive4PoseEstimator = estimator.SwerveDrive4PoseEstimator(
             self.kinematics,
-            geometry.Rotation2d(0),
+            self.gyro.getRotation2d(),
             (
                 self.frontLeftModule.getPosition(),
                 self.frontRightModule.getPosition(),
@@ -96,9 +112,7 @@ class SwerveDrive:
             geometry.Pose2d(),
         )
         self.odometry.setVisionMeasurementStdDevs((0.5, 0.5, math.pi / 2))
-        self._chassis_speed = kinematics.ChassisSpeeds()
-
-        self.navx_zero()
+        self._chassis_speed: kinematics.ChassisSpeeds = kinematics.ChassisSpeeds()
 
     def flush(self):
         """
@@ -126,13 +140,13 @@ class SwerveDrive:
         )
         self.angle_pid.setConstraints(constraint)
 
-    def getRotation2d(self):
+    def get_odometry_rotation(self):
         return self.get_odometry_pose().rotation()
 
     def get_chassis_speed(self) -> kinematics.ChassisSpeeds:
         return self._chassis_speed
 
-    def angle_reached(self, acceptable_error=5):
+    def angle_reached(self, acceptable_error: float = 5):
         """Returns if the target angle have been reached"""
         if (
             abs((self.__snap_angle - self.get_odometry_angle()).degrees())
@@ -145,28 +159,32 @@ class SwerveDrive:
         """
         Retourne l'angle absolue basée sur le zéro
         """
-        return self.getRotation2d()
+        return self.get_odometry_rotation()
 
     def snap_angle(self, angle: Rotation2d):
         """Écrit l'angle absolue à atteindre de -180 à 180"""
         self.__snap_angle = angle
         self.__snap_enabled = True
 
-    def set_field_relative_automove_value(self, forward, strafe):
+    def set_field_relative_automove_value(self, forward: float, strafe: float):
         self.auto_chassis_speed = kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
-            forward, strafe, 0, self.getRotation2d()
+            forward, strafe, 0, self.get_odometry_rotation()
         )
 
-    def relative_rotate(self, rotation):
+    def relative_rotate(self, rotation: float):
         self.__snap_angle = self.get_odometry_angle() + Rotation2d.fromDegrees(rotation)
 
-    def set_robot_relative_automove_value(self, forward, strafe):
+    def set_robot_relative_automove_value(self, forward: float, strafe: float):
         self.auto_chassis_speed = kinematics.ChassisSpeeds(forward, strafe, 0)
 
-    def set_tmp_speed_factor(self, factor_movement=1.0, factor_rotation=1.0):
+    def set_tmp_speed_factor(
+        self, factor_movement: float = 1.0, factor_rotation: float = 1.0
+    ):
         self.tmp_speed_factor = (factor_movement, factor_rotation)
 
-    def set_controller_values(self, forward, strafe, angle_stick_x, angle_stick_y):
+    def set_controller_values(
+        self, forward: float, strafe: float, angle_stick_x: float, angle_stick_y: float
+    ):
         forward = tools.square_input(forward)
         strafe = tools.square_input(strafe)
 
@@ -188,7 +206,7 @@ class SwerveDrive:
 
         self.controller_chassis_speed = (
             kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
-                forward, strafe, omega, self.getRotation2d()
+                forward, strafe, omega, self.get_odometry_rotation()
             )
         )
 
@@ -222,7 +240,9 @@ class SwerveDrive:
             chassis_speed.omega = -omega
         else:
             self.angle_pid.reset(
-                trajectory.TrapezoidProfile.State(self.getRotation2d().degrees(), 0)
+                trajectory.TrapezoidProfile.State(
+                    self.get_odometry_rotation().degrees(), 0
+                )
             )
 
         # Ne fais rien si les vecteurs sont trop petits
@@ -250,9 +270,7 @@ class SwerveDrive:
         chassis_speed.vy = chassis_speed.vy * self.tmp_speed_factor[0]
         chassis_speed.omega = chassis_speed.omega * self.tmp_speed_factor[1]
 
-        self.sim_angle = self.sim_angle + Rotation2d.fromDegrees(
-            chassis_speed.omega * 1 * 20
-        )
+        self.gyro.update(chassis_speed)
 
         chassis_speed = kinematics.ChassisSpeeds.discretize(
             chassis_speed,
@@ -270,33 +288,14 @@ class SwerveDrive:
         self.rearLeftModule.setTargetState(swerveModuleStates[2])
         self.rearRightModule.setTargetState(swerveModuleStates[3])
 
-    def navx_zero(self):
-        self.navx.reset()
-        self.navx_update_offset()
         self.__snap_angle = self.get_odometry_angle()
-        # self.angle_pid.reset(trajectory.TrapezoidProfile.State(0, 0))
-
-    def navx_update_offset(self):
-        self.navx_offset = (
-            self.navx.getRotation2d() - self.odometry.getEstimatedPosition().rotation()
-        )
 
     def __updateOdometry(self) -> None:
         """Updates the field relative position of the robot."""
 
-        # Get angle from navx!
-        if self.is_sim:
-            gyro_angle = self.sim_angle
-        else:
-            if self.navx.isConnected():
-                gyro_angle = self.navx.getRotation2d() + self.navx_offset
-            else:
-                print("NAVX SHARTED")
-                return
-
         # Add odometry measurements
-        self.odometry.update(
-            gyro_angle,
+        _ = self.odometry.update(
+            self.gyro.getRotation2d(),
             (
                 self.frontLeftModule.getPosition(),
                 self.frontRightModule.getPosition(),
@@ -318,14 +317,8 @@ class SwerveDrive:
         For PathPlannerLib
         Method to reset odometry (will be called if your auto has a starting pose)
         """
-        gyro = (
-            self.sim_angle
-            if self.is_sim
-            else (self.navx.getRotation2d() + self.navx_offset)
-        )
-
         self.odometry.resetPosition(
-            gyro,
+            self.gyro.getRotation2d(),
             (
                 self.frontLeftModule.getPosition(),
                 self.frontRightModule.getPosition(),

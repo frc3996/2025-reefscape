@@ -1,14 +1,16 @@
 import math
-from typing import Any, Tuple
 
 import wpilib
-from magicbot import feedback
-from ntcore import NetworkTableInstance
+import wpimath
+import wpimath.units
+from ntcore import (DoubleArraySubscriber, DoubleSubscriber,
+                    FloatArraySubscriber, FloatSubscriber, IntegerSubscriber,
+                    NetworkTable, NetworkTableInstance, StringSubscriber)
 from wpimath.filter import MedianFilter
-from wpimath.geometry import Pose2d, Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
-from common.tools import map_value
-from components.field import BLUE_ALLIANCE, RED_ALLIANCE, FieldLayout
+from common import tools
+from components.field import FieldLayout
 from components.swervedrive import SwerveDrive
 
 
@@ -17,58 +19,65 @@ class LimeLightVision:
     field_layout: FieldLayout
 
     def __init__(self, name="limelight"):
-        self.nt = NetworkTableInstance.getDefault().getTable(name)
+        self.nt: NetworkTable = NetworkTableInstance.getDefault().getTable(name)
 
         # Register to the limelight topics
-        self.tclass = self.nt.getStringTopic("tclass").subscribe("None")
-        self.ta = self.nt.getFloatTopic("ta").subscribe(0)
-        self.tx = self.nt.getFloatTopic("tx").subscribe(-999)
-        self.tv = self.nt.getIntegerTopic("tv").subscribe(0)
-        self.pipe = self.nt.getIntegerTopic("getpipe").subscribe(-1)
-        self.cl = self.nt.getFloatTopic("cl").subscribe(0)
-        self.tl = self.nt.getFloatTopic("tl").subscribe(0)
-        self.tid = self.nt.getIntegerTopic("tid").subscribe(0)
+        self.tclass: StringSubscriber = self.nt.getStringTopic("tclass").subscribe(
+            "None"
+        )
+        self.ta: FloatSubscriber = self.nt.getFloatTopic("ta").subscribe(0)
+        self.tx: FloatSubscriber = self.nt.getFloatTopic("tx").subscribe(-999)
+        self.tv: IntegerSubscriber = self.nt.getIntegerTopic("tv").subscribe(0)
+        self.pipe: IntegerSubscriber = self.nt.getIntegerTopic("getpipe").subscribe(-1)
+        self.cl: FloatSubscriber = self.nt.getFloatTopic("cl").subscribe(0)
+        self.tl: FloatSubscriber = self.nt.getFloatTopic("tl").subscribe(0)
+        self.tid: IntegerSubscriber = self.nt.getIntegerTopic("tid").subscribe(0)
+        self.ts: FloatSubscriber = self.nt.getFloatTopic("ts").subscribe(0)
+        # stddevs	doubleArray	MegaTag Standard Deviations
+        # [MT1x, MT1y, MT1z, MT1roll, MT1pitch, MT1Yaw, MT2x, MT2y, MT2z, MT2roll, MT2pitch, MT2yaw]
+        self.stddevs: DoubleArraySubscriber = self.nt.getDoubleArrayTopic(
+            "stddevs"
+        ).subscribe([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-        self.botpose = self.nt.getFloatArrayTopic("botpose").subscribe(
-            [-99, -99, -99, 0, 0, 0, -1]
-        )
-        self.botpose_wpiblue = self.nt.getFloatArrayTopic("botpose_wpiblue").subscribe(
-            [-99, -99, -99, 0, 0, 0, -1]
-        )
-        self.botpose_wpired = self.nt.getFloatArrayTopic("botpose_wpired").subscribe(
-            [-99, -99, -99, 0, 0, 0, -1]
-        )
+        self.botpose: FloatArraySubscriber = self.nt.getFloatArrayTopic(
+            "botpose"
+        ).subscribe([-99, -99, -99, 0, 0, 0, -1])
+        self.botpose_wpiblue: FloatArraySubscriber = self.nt.getFloatArrayTopic(
+            "botpose_wpiblue"
+        ).subscribe([-99, -99, -99, 0, 0, 0, -1])
+        self.botpose_wpired: FloatArraySubscriber = self.nt.getFloatArrayTopic(
+            "botpose_wpired"
+        ).subscribe([-99, -99, -99, 0, 0, 0, -1])
 
         # create the timer that we can use to the the FPGA timestamp
-        self.timer = wpilib.Timer()
+        self.timer: wpilib.Timer = wpilib.Timer()
 
         # And a bunch of filters
-        self.poseXFilter = MedianFilter(20)
-        self.poseYFilter = MedianFilter(20)
-        self.poseZFilter = MedianFilter(20)
-        self.poseYawFilter = MedianFilter(20)
+        self.poseXFilter: MedianFilter = MedianFilter(20)
+        self.poseYFilter: MedianFilter = MedianFilter(20)
+        self.poseZFilter: MedianFilter = MedianFilter(20)
+        self.poseYawFilter: MedianFilter = MedianFilter(20)
         self.__last_update = None
-        self.std_devs = [0.0, 0.0, 0.0]
-        self.filter_pos = [0.0, 0.0, 0.0]
+        self.std_devs: list[float] = [0.0, 0.0, 0.0]
+        self.filter_pos: list[float] = [0.0, 0.0, 0.0]
 
-    def get_pose(self) -> Tuple[Pose3d, Any] | None:
+    def get_pose(self) -> tuple[Pose3d, float] | None:
         pose3d = self.botpose_to_pose3d(self.botpose.get())
         if pose3d is None:
             return None
         return (*pose3d,)
 
-    def get_alliance_pose(self) -> Tuple[Pose3d, Any] | None:
-        if self.field_layout.alliance == RED_ALLIANCE:
+    def get_alliance_pose(self) -> tuple[Pose3d, float] | None:
+        if tools.is_red():
             pose3d = self.botpose_to_pose3d(self.botpose_wpired.get())
-        elif self.field_layout.alliance == BLUE_ALLIANCE:
-            pose3d = self.botpose_to_pose3d(self.botpose_wpiblue.get())
         else:
-            raise RuntimeError("No alliance set")
+            pose3d = self.botpose_to_pose3d(self.botpose_wpiblue.get())
+
         if pose3d is None:
             return None
         return (*pose3d,)
 
-    def botpose_to_pose3d(self, poseArray) -> Tuple[Pose3d, Any] | None:
+    def botpose_to_pose3d(self, poseArray: list[float]) -> tuple[Pose3d, float] | None:
         """Takes limelight array data and creates a Pose3d object for
            robot position and a timestamp reprepresenting the time
            the position was observed.
@@ -77,7 +86,7 @@ class LimeLightVision:
             poseArray (_type_): An array from the limelight network tables.
 
         Returns:
-            Tuple[Pose3d, Any]: Returns vision Pose3d and timestamp.
+            tuple[Pose3d, Any]: Returns vision Pose3d and timestamp.
         """
         pX, pY, pZ, pRoll, pPitch, pYaw, msLatency = poseArray
         if msLatency == -1:
@@ -85,25 +94,23 @@ class LimeLightVision:
         else:
             return Pose3d(
                 Translation3d(pX, pY, pZ), Rotation3d.fromDegrees(pRoll, pPitch, pYaw)
-            ), self.timer.getFPGATimestamp() - (msLatency / 1000)
+            ), wpimath.units.seconds(self.ts.get())
 
-    # @feedback
     def get_std_devs(self):
         return self.std_devs
 
     def light_pipeline(self):
-        self.nt.putNumber("ledMode", 0)
+        _ = self.nt.putNumber("ledMode", 0)
 
     def light_off(self):
-        self.nt.putNumber("ledMode", 1)
+        _ = self.nt.putNumber("ledMode", 1)
 
     def light_blink(self):
-        self.nt.putNumber("ledMode", 2)
+        _ = self.nt.putNumber("ledMode", 2)
 
     def light_on(self):
-        self.nt.putNumber("ledMode", 3)
+        _ = self.nt.putNumber("ledMode", 3)
 
-    # @feedback
     def get_filter_pos(self):
         return self.filter_pos
 
@@ -155,77 +162,5 @@ class LimeLightVision:
                 vision_pose[1],
                 (stddev_xy, stddev_xy, stddev_rot),
             )
-            # self.drivetrain.navx_update_offset()
 
             self.__last_update = vision_pose[0]
-
-    # def set_pipeline(self, value: int):
-    #     self.nt.putNumber("pipeline", value)
-
-    # def get_latency(self):
-    #     return (self.cl.get() + self.tl.get()) / 1000
-    #
-    # def get_pipeline(self):
-    #     return self.pipe.get()
-
-    # def get_target(self):
-    #     if self.Tv.get():
-    #         self.tClass = self.Tclass.get()
-    #         self.ta = self.Ta.get()
-    #         self.tx = self.Tx.get()
-    #         self.tv = self.Tv.get()
-    #         self.drive_vRotate = self.calculate_rotation(self.tx)
-    #         self.drive_vX = self.calculate_x(self.ta)
-    #         self.drive_vY = 0
-    #     else:
-    #         self.tClass = self.ta = self.tx = self.tv = None
-    #         self.drive_vRotate = self.drive_vX = self.drive_vY = 0
-    #         # self.txFilter.reset()
-    #         # self.taFilter.reset()
-    #
-    # def calculate_x(self, targetArea):
-    #     """Calculate X robot-oriented speed from the size of the target.  Return is inverted
-    #     since we need the robot to drive backwards toward the target to pick it up.
-    #
-    #     Args:
-    #         targetArea (Float):  The target area determined by limelight.
-    #
-    #     Returns:
-    #         Float: Velocity in the X direction (robot oriented)
-    #     """
-    #     return min(-0.20, -(targetArea * -0.0125 + 1.3125))
-    #     # calcX = -(-0.0002*(targetArea**2) + 0.0093*targetArea+1)
-    #     # return max(-1, calcX)
-    #
-    # def calculate_rotation(self, targetX):
-    #     """Calculate the rotational speed from the X value of the target in the camera frame.
-    #     Return is inverted to make left rotation positive from a negative X value, meaning the
-    #     target is to the left of center of the camera's view.
-    #
-    #     Args:
-    #         targetX (Float): The X value of the target in the camera frame, 0 is straight ahead,
-    #         to the left is negative, to the right is positive.
-    #
-    #     Returns:
-    #         Float: Rotational velocity with CCW (left, robot oriented) positive.
-    #     """
-    #     return -(targetX / 25)
-    #
-    # def get_velocity(self):
-    #     """Get calculated velocities from vision target data
-    #
-    #     Returns:
-    #         Tuple(vX, vY, vT): X, Y, and rotation velocities as a tuple.
-    #     """
-    #     return (self.drive_vX, self.drive_vY, self.drive_vRotate)
-    #
-    # def has_target(self):
-    #     return self.tv
-    #
-    # def is_target_ready(self, acceptable_offset=2):
-    #     if self.has_target():
-    #         return False
-    #
-    #     if abs(self.Tx.get()) < acceptable_offset:
-    #         return True
-    #     return False

@@ -12,15 +12,16 @@ Reefscape
 Presented by
 HAAS
 """
-import wpilib
-import constants
+
 import rev
-from magicbot import tunable, will_reset_to
+import wpilib
+from magicbot import StateMachine, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
-from magicbot import StateMachine
+
+import constants
 
 
-class Climb():
+class Climb:
     max_speed = tunable(0.5)
     __climb_motor_speed = will_reset_to(0)
     # pneumatic_hub: wpilib.PneumaticHub
@@ -31,25 +32,50 @@ class Climb():
         """
 
         # Guide motor
-        self.guide_motor = rev.CANSparkMax(constants.CANIds.CLIMB_GUIDE_MOTOR, rev.CANSparkMax.MotorType.kBrushless)
-        self.guide_motor.setOpenLoopRampRate(0.5)
+        self.guide_motor = rev.SparkMax(
+            constants.CANIds.CLIMB_GUIDE_MOTOR, rev.SparkMax.MotorType.kBrushless
+        )
+        # self.guide_motor.setOpenLoopRampRate(0.5)
 
         # Main Climb
-        self.climb_raise_motor_main = rev.CANSparkMax(constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.CANSparkMax.MotorType.kBrushless)
-        self.climb_raise_motor_main.setOpenLoopRampRate(0.5)
-        
+        self.climb_raise_motor_main = rev.SparkMax(
+            constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless
+        )
+        # self.climb_raise_motor_main.setOpenLoopRampRate(0.5)
+
         # Follower Climb
+<<<<<<< HEAD
         self.climb_raise_motor_follower = rev.CANSparkMax(constants.CANIds.CLIMB_RAISE_MOTOR_FOLLOWER, rev.CANSparkMax.MotorType.kBrushless)
         self.climb_raise_motor_follower.follow(self.climb_raise_motor_main)
+=======
+        self.climb_raise_motor_follower = rev.SparkMax(
+            constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless
+        )
+        # self.climb_raise_motor_follower.follow(self.climb_raise_motor_main)
+>>>>>>> fc0eedb (Big refactoring)
 
         # Limit switch
-        self.cage_in_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_1)
-        self.cage_in_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_2)
-        self.piston_out_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_1)
-        self.piston_out_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_2)
+        self.cage_in_limitswitch_1 = wpilib.DigitalInput(
+            constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_1
+        )
+        self.cage_in_limitswitch_2 = wpilib.DigitalInput(
+            constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_2
+        )
+        self.piston_out_limitswitch_1 = wpilib.DigitalInput(
+            constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_1
+        )
+        self.piston_out_limitswitch_2 = wpilib.DigitalInput(
+            constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_2
+        )
 
         # Piston
+<<<<<<< HEAD
         # self.piston_solenoid = self.pneumatic_hub.makeSolenoid(constants.SolenoidChannel.CLIMB_PISTON)
+=======
+        self.piston_solenoid = self.pneumatic_hub.makeSolenoid(
+            constants.SolenoidChannel.CLIMB_PISTON
+        )
+>>>>>>> fc0eedb (Big refactoring)
 
     def go_front(self):
         """Move motor shoot position"""
@@ -77,7 +103,7 @@ class Climb():
 
     def cageIn(self):
         """Retourne vrai si la switch1 OU 2 est activé"""
-        #TODO
+        # TODO
         # return intakeSwitch1 or intakeSwitch2
 
     def pistonDeployed(self):
@@ -112,7 +138,7 @@ class ClimbAction(StateMachine):
         self.climb.close_pistons()
         if self.climb.pistonDeployed():
             self.next_state("motorClimb")
-            
+
     @state
     def motorClimb(self):
         # Moteur à 100%, à l'infini

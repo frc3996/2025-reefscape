@@ -15,25 +15,23 @@ LIME LIGHT
 
 import ntcore
 import phoenix6
-import rev
 import wpilib
-from magicbot import MagicRobot, tunable
+from magicbot import MagicRobot
 from navx import AHRS
-from wpimath.geometry import Rotation2d
 
 import constants
 from autonomous.auto_modes import RunAuto
-from common import tools
-from components.pixy import Pixy
-from common.arduino_light import I2CArduinoLight, LedMode
+# from common.arduino_light import I2CArduinoLight
 from components.field import FieldLayout
+# from components.climb import Climb
+from components.gyro import Gyro
 from components.limelight import LimeLightVision
+from components.pixy import Pixy
 # from components.lift import Lift
 # from components.intake import Intake
-from components.robot_actions import (ActionStow, ActionIntake)
+from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
 from components.swervedrive import SwerveDrive, SwerveDriveConfig
 from components.swervemodule import SwerveModule, SwerveModuleConfig
-# from components.climb import Climb
 
 
 class MyRobot(MagicRobot):
@@ -52,23 +50,24 @@ class MyRobot(MagicRobot):
 
     Pour plus d'information: https://robotpy.readthedocs.io/en/stable/frameworks/magicbot.html
     """
+
     ##### Auto mode #####
     runAuto: RunAuto
 
     ##### HIGH Level components first (components that use components) #####
     actionStow: ActionStow
     actionIntake: ActionIntake
-
+    actionPathTester: ActionPathTester
 
     ##### LOW Level components #####
 
     # NAVX
-    navx: AHRS
+    gyro: Gyro
 
     # Pixy
     pixy: Pixy
 
-    # SwerveDrive
+    # SwerveDrivecomponents/robot_actions.py
     frontLeftModule: SwerveModule
     frontRightModule: SwerveModule
     rearLeftModule: SwerveModule
@@ -81,7 +80,7 @@ class MyRobot(MagicRobot):
     # Vision
     limelight_vision: LimeLightVision
 
-    # #Pneumatic Hub
+    # Pneumatic Hub
     # pneumatic_hub: wpilib.PneumaticHub
 
     # Lift
@@ -89,6 +88,8 @@ class MyRobot(MagicRobot):
 
     # climb
     # climb: Climb
+
+    # pneumatic_hub: wpilib.PneumaticHub
 
     # intake
     # intake: Intake
@@ -106,17 +107,20 @@ class MyRobot(MagicRobot):
         self.nt = ntcore.NetworkTableInstance.getDefault().getTable("robotpy")
         self.is_sim = self.isSimulation()
 
-        self.arduino_light = I2CArduinoLight(wpilib.I2C.Port.kOnboard, 0x42)
+        # self.arduino_light = I2CArduinoLight(wpilib.I2C.Port.kOnboard, 0x42)
 
         # NOTE: Remove comment to increase power over 9000 /s
         # Créé plein de problème sur le modbus, gardé en sourvenir
         # self.status_light = wpilib.Solenoid(10, wpilib.PneumaticsModuleType.CTREPCM, 1)
 
         # NAVX
-        # self.navx = AHRS.create_spi(update_rate_hz=50)
-        self.navx = AHRS(wpilib.SerialPort.Port.kMXP)
+        # self.navx = AHRS(AHRS.NavXComType.kUSB1)
+        # self.gyro
 
-        #Pneumatic Hub
+        # Pneumatic Hub
+        self.pneumatic_hub = wpilib.PneumaticHub()
+
+        # Pneumatic Hub
         # pneumatic_hub = wpilib.PneumaticHub()
 
         # Configuration de la base swerve
@@ -211,7 +215,8 @@ class MyRobot(MagicRobot):
         )
 
     def disabledInit(self) -> None:
-        self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
+        pass
+        # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
 
     def disabledPeriodic(self):
         """Mets à jours le dashboard, même quand le robot est désactivé"""
@@ -222,7 +227,7 @@ class MyRobot(MagicRobot):
         """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
         self.actionStow.done()
         self.limelight_vision.light_off()
-        self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
+        # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
         pass
 
     def autonomous(self):
@@ -234,7 +239,7 @@ class MyRobot(MagicRobot):
         tre en mode téléopéré."""
         self.pdp.clearStickyFaults()
         self.limelight_vision.light_off()
-        self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
+        # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
         self.actionStow.engage()
         self.drivetrain.permanent_snap = False
 
@@ -262,4 +267,3 @@ class MyRobot(MagicRobot):
 
         # elif self.gamepad_pilote.getAButton():
         #     self.intake.set_intake_speed(0.25)
-            

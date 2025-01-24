@@ -1,14 +1,16 @@
 import math
 from dataclasses import dataclass
 from typing import cast
-from common import tools
-import constants
 
 import phoenix6
+import wpimath.trajectory
 from magicbot import feedback, tunable, will_reset_to
+from pathplannerlib.trajectory import SwerveModuleState
 from wpimath import controller, geometry, kinematics, units
 from wpimath.geometry import Rotation2d
-import wpimath.trajectory
+
+import constants
+from common import tools
 
 
 # Classe de configuration des swerve
@@ -28,13 +30,12 @@ class SwerveModule:
     encoder: phoenix6.hardware.CANcoder
     cfg: SwerveModuleConfig
 
-    kP = tunable(0.005)
-    kI = tunable(0.0)
-    kD = tunable(0.0)
+    kP: tunable[float] = tunable(0.005)
+    kI: tunable[float] = tunable(0.0)
+    kD: tunable[float] = tunable(0.0)
 
-    debug = tunable(False)
-    calibration_mode = tunable(False)
-    encoder_zero = tunable(0.0)
+    calibration_mode: tunable[bool] = tunable(False)
+    encoder_zero: tunable[float] = tunable(0.0)
 
     def setup(self):
         """
@@ -47,11 +48,13 @@ class SwerveModule:
         fudge_factor = 1
         wheel_circumference_meter = math.pi * units.inchesToMeters(4.0)
         wheel_gear_ratio = 6.12  # L1=8.14; L2=6.75; L3=6.12
-        self.velocity_to_rps_conversion_factor = (
+        self.velocity_to_rps_conversion_factor: float = (
             wheel_gear_ratio / wheel_circumference_meter * fudge_factor
         )
-        self.sim_currentPosition = kinematics.SwerveModulePosition()
-        self.targetState = kinematics.SwerveModuleState()
+        self.sim_currentPosition: kinematics.SwerveModulePosition = (
+            kinematics.SwerveModulePosition()
+        )
+        self.targetState: kinematics.SwerveModuleState = kinematics.SwerveModuleState()
 
         # Drive Motor
         config = phoenix6.configs.TalonFXConfiguration()
@@ -82,15 +85,19 @@ class SwerveModule:
         config.motor_output = motor_config
         self.rotateMotor.configurator.apply(config)  # type: ignore
         self.rotateMotor_control = phoenix6.controls.DutyCycleOut(0)
+
         self.rotation_pid = controller.PIDController(
             self.kP, self.kI, self.kD
         )  # PID configuré via le ShuffleBoard
         self.rotation_pid.enableContinuousInput(
             0, 360
         )  # 0 et 360 sont considérés comme la même valeur
+
         cancoder_config = phoenix6.configs.CANcoderConfiguration()
-        cancoder_config.magnet_sensor.absolute_sensor_range = phoenix6.signals.AbsoluteSensorRangeValue.SIGNED_PLUS_MINUS_HALF
-        self.encoder.configurator.apply(cancoder_config)  # type: ignore
+        # cancoder_config.magnet_sensor.absolute_sensor_range = (
+        #     phoenix6.signals.AbsoluteSensorRangeValue.SIGNED_PLUS_MINUS_HALF
+        # )
+        self.encoder.configurator.apply(cancoder_config)
 
         self.driveMotor.get_position().set_update_frequency(10)
         self.rotateMotor.get_position().set_update_frequency(10)
@@ -127,10 +134,8 @@ class SwerveModule:
         else:
             self.driveMotor.set_position(0)
 
-    def setTargetState(self, targetState):
-        self.targetState = kinematics.SwerveModuleState.optimize(
-            targetState, self.targetState.angle
-        )
+    def setTargetState(self, targetState: SwerveModuleState):
+        self.targetState.optimize(targetState.angle)
 
     def getPosition(self):
         """
@@ -143,7 +148,9 @@ class SwerveModule:
             self.driveMotor.get_position().value
             / self.velocity_to_rps_conversion_factor
         )
-        result = kinematics.SwerveModulePosition(-drive_position, self.get_encoder_rotation())
+        result = kinematics.SwerveModulePosition(
+            -drive_position, self.get_encoder_rotation()
+        )
         return result
 
     def process(self):
@@ -154,7 +161,7 @@ class SwerveModule:
         Appelé à chaque itération/boucle
         """
         # Reversing the wheel direction if angle is greater than 90 degree
-        rotation_offset = (self.targetState.angle - self.get_encoder_rotation())
+        rotation_offset = self.targetState.angle - self.get_encoder_rotation()
         if self.cfg.allow_reverse:
             if rotation_offset.degrees() < -90 or rotation_offset.degrees() > 90:
                 self.targetState.speed *= -1

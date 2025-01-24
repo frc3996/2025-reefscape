@@ -1,21 +1,17 @@
-import math
+from typing import override
 
-import numpy
 import wpilib
-import wpimath.units
-from magicbot import StateMachine, feedback, state, timed_state, tunable
+from magicbot import StateMachine, state, timed_state, tunable
 from magicbot.state_machine import StateRef
-from wpimath import controller, geometry
+from wpimath import controller
 
-import constants
 from common import tools
-from common.arduino_light import I2CArduinoLight, LedMode
+# from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
-from components.field import FieldLayout
+from components.intake import Intake
+from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-# from components.lift import Lift
-# from components.intake import Intake
 from components.swervedrive import SwerveDrive
 
 
@@ -44,7 +40,7 @@ class ActionStow(StateMachine):
 class ActionIntake(StateMachine):
     # lift: Lift
     # intake: Intake
-    arduino_light: I2CArduinoLight
+    # arduino_light: I2CArduinoLight
     drivetrain: SwerveDrive
     pixy: Pixy
     auto_intake_kp = tunable(0.001)  # For relative_rotate: 0.015
@@ -69,7 +65,7 @@ class ActionIntake(StateMachine):
             self.next_state("finish")
             return
 
-        self.arduino_light.set_leds(LedMode.BlinkSlow, 0, 255, 0)
+        # self.arduino_light.set_leds(LedMode.BlinkSlow, 0, 255, 0)
 
         self.auto_intake_pid.setPID(
             self.auto_intake_kp,
@@ -91,7 +87,7 @@ class ActionIntake(StateMachine):
             self.next_state("finish")
 
         if self.intake.has_object():
-            self.arduino_light.set_leds(LedMode.BlinkFast, 0, 255, 0)
+            # self.arduino_light.set_leds(LedMode.BlinkFast, 0, 255, 0)
             self.limelight_vision.light_blink()
             self.next_state("finish")
 
@@ -122,7 +118,7 @@ class ActionIntake(StateMachine):
             self.intake.jiggle()
 
     def done(self) -> None:
-        self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
+        # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
         self.limelight_vision.light_off()
         if not tools.is_autonomous():
             self.actionStow.engage()
@@ -130,14 +126,14 @@ class ActionIntake(StateMachine):
 
 
 class ActionPathTester(StateMachine):
-    actionStow: ActionStow
     drivetrain: SwerveDrive
-    path_kp = tunable(2)
-    path_ki = tunable(0)
-    path_kd = tunable(0)
-    path_profile = tunable(2)
-    force_reset_pose = tunable(False)
+    path_kp: tunable[int] = tunable(2)
+    path_ki: tunable[int] = tunable(0)
+    path_kd: tunable[int] = tunable(0)
+    path_profile: tunable[int] = tunable(2)
+    force_reset_pose: tunable[bool] = tunable(False)
 
+    @override
     def engage(
         self, initial_state: StateRef | None = None, force: bool = False
     ) -> None:
@@ -145,7 +141,7 @@ class ActionPathTester(StateMachine):
 
     @state(first=True)
     def init(self):
-        self.auto_path = PathHelper(
+        self.auto_path: PathHelper = PathHelper(
             self.drivetrain,
             "amp_to_1",
             kp=self.path_kp,
@@ -162,6 +158,6 @@ class ActionPathTester(StateMachine):
         if self.auto_path.robot_reached_end_position():
             print("Reached end!")
 
+    @override
     def done(self):
-        self.actionStow.engage()
         super().done()

@@ -2,10 +2,11 @@ import typing
 
 import robotpy_apriltag
 import wpilib
-from wpimath.geometry import Pose2d, Pose3d, Rotation2d, Translation2d, Translation3d
+from wpimath.geometry import (Pose2d, Pose3d, Rotation2d, Translation2d,
+                              Translation3d)
 
-apriltag_layout = robotpy_apriltag.loadAprilTagLayoutField(
-    robotpy_apriltag.AprilTagField.k2024Crescendo
+apriltag_layout = robotpy_apriltag.AprilTagFieldLayout.loadField(
+    robotpy_apriltag.AprilTagField.k2025Reefscape
 )
 
 TagId = typing.Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]

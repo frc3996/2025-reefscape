@@ -1,7 +1,6 @@
 import math
 from enum import IntEnum
 
-
 # Swerve
 MAX_ANGULAR_VEL = math.degrees(math.pi * 2) * 2
 MAX_ANGULAR_ACCEL = math.degrees(math.pi * 5) * 2
@@ -12,7 +11,8 @@ SWERVE_DIRECTION_GEAR_RATIO = (14 / 50) * (10 / 60)
 
 
 class AnalogIO(IntEnum):
-    """ Définition des senseurs Analogiques"""
+    """Définition des senseurs Analogiques"""
+
     BEAM_SENSOR = 0
     PIXY_OFFSET = 1
 
@@ -22,7 +22,8 @@ class AnalogIO(IntEnum):
 
 
 class DigitalIO(IntEnum):
-    """ Définition des senseurs digitales"""
+    """Définition des senseurs digitales"""
+
     PIXY_VALID = 0
     CLIMB_CAGE_IN_LIMITSWITCH_1 = 1
     CLIMB_CAGE_IN_LIMITSWITCH_2 = 2
@@ -36,7 +37,8 @@ class DigitalIO(IntEnum):
 
 
 class CANIds(IntEnum):
-    """ Définition des ID CAN"""
+    """Définition des ID CAN"""
+
     SWERVE_ROTATE_FL = 25
     SWERVE_DRIVE_FL = 26
     SWERVE_CANCODER_FL = 11
@@ -65,5 +67,6 @@ class CANIds(IntEnum):
 
 
 class SolenoidChannel(IntEnum):
-    """ Définition des senseurs Analogiques"""
+    """Définition des senseurs Analogiques"""
+
     CLIMB_PISTON = 0

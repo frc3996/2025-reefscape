@@ -26,6 +26,3 @@ self.nt.putNumber("frontRightModule/rotation_zero", 109)
 self.nt.putNumber("rearLeftModule/rotation_zero", 330)
 self.nt.putNumber("rearRightModule/rotation_zero", 44)
 ```
-
-# Where to find the April Tag Map (pose):
-https://github.com/wpilibsuite/allwpilib/tree/main/apriltag/src/main/native/resources/edu/wpi/first/apriltag
