@@ -1,46 +1,7 @@
 
-  
-# ################################################## Lift ################################################################
-
-# - 1x string encodeur (analogue in)
-# - 2x neo (1 "follower")
-# - 4x limit switch (2 zero, 2 safety)
-
-# def goL1:
-#     return move lift(L1 pos)
-
-# def goL2
-#     return move lift(L2 pos)
-
-# def goL3
-#     return move lift(L3 pos)
-
-# def LgoL4
-#     return move lift(L4 pos)
-
-# def setup():
-#     créé pid avec string encoder
-
-# def moveLift(pos):
-#     set target
-#     return pid reached
-
-# def execute():
-#     pid magic(target)
-
-#     if target isGoingUp and safetyLimitSwitch: 
-#         power 0
-#     else:
-#          moteur = pid magic
-
-# def manualOffset():
-#     if getControler(touche 1): offset + 0.1
-#     if getControler(touche 2): offset - 0.1
-
-
-
 import wpilib
 import constants
+import rev
 from magicbot import tunable, will_reset_to, StateMachine
 from magicbot.state_machine import state, timed_state
 
@@ -56,6 +17,17 @@ class Lift:
         """
         Appelé après l'injection
         """
+
+        self.lift_motor_main = rev.CANSparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.CANSparkMax.MotorType.kBrushless)
+        self.lift_motor_follow = rev.CANSparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.CANSparkMax.MotorType.kBrushless)
+
+        self.zero_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1)
+        self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)
+        self.safety_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_1)
+        self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
+
+        self.string_encoder = wpilib.AnalogInput(constants.AnalogIO.LIFT_STRING_ENCODER)
+
         # self.lift_motor = wpilib.PWMMotorController("DemoMotor", constants.PWM_DEMOMOTOR)
 
     def set_speed(self, speed):
@@ -65,12 +37,20 @@ class Lift:
         # S'assure que la vitesse maximale ne peut pas être dépassée
         self.__target_speed = speed
 
+    def moveLift(self,pos):
+        """Set la hauteur du lift selon la position"""
+        # TODO
+
     def __move_to_position(self, position):
         """Move the lift to the proper position"""
         # TODO
 
     def go_intake(self):
         self.__move_to_position(INTAKE_POSITION)
+
+    def manualOffset():
+        """Modifie l'offset de très peu si probleme"""
+        # TODO
 
     def execute(self):
         """
@@ -80,8 +60,18 @@ class Lift:
 
         # self.lift_motor.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
 
+        target = 0  # Cette valeur sera tunée par un PID
 
-class LiftActions(StateMachine):
 
-    def todo(self):
-        pass
+
+
+# class LiftActions(StateMachine):
+
+#     lift : Lift
+
+#     def todo(self):
+#         pass
+
+#     @state
+#     def liftMovement(self, pos):
+#         self.lift.moveLift(self, pos)
