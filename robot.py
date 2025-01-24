@@ -28,12 +28,12 @@ from components.pixy import Pixy
 from common.arduino_light import I2CArduinoLight, LedMode
 from components.field import FieldLayout
 from components.limelight import LimeLightVision
-from components.lift import Lift
-from components.intake import Intake
+# from components.lift import Lift
+# from components.intake import Intake
 from components.robot_actions import (ActionStow, ActionIntake)
 from components.swervedrive import SwerveDrive, SwerveDriveConfig
 from components.swervemodule import SwerveModule, SwerveModuleConfig
-from components.climb import Climb
+# from components.climb import Climb
 
 
 class MyRobot(MagicRobot):
@@ -81,14 +81,17 @@ class MyRobot(MagicRobot):
     # Vision
     limelight_vision: LimeLightVision
 
+    # #Pneumatic Hub
+    # pneumatic_hub: wpilib.PneumaticHub
+
     # Lift
-    lift: Lift
+    # lift: Lift
 
     # climb
-    climb: Climb
+    # climb: Climb
 
     # intake
-    intake: Intake
+    # intake: Intake
 
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
@@ -112,6 +115,9 @@ class MyRobot(MagicRobot):
         # NAVX
         # self.navx = AHRS.create_spi(update_rate_hz=50)
         self.navx = AHRS(wpilib.SerialPort.Port.kMXP)
+
+        #Pneumatic Hub
+        # pneumatic_hub = wpilib.PneumaticHub()
 
         # Configuration de la base swerve
         self.initSwerve()
@@ -254,5 +260,6 @@ class MyRobot(MagicRobot):
         if self.actionStow.is_executing:
             return
 
-        elif self.gamepad_pilote.getAButton():
-            self.actionIntake.engage()
+        # elif self.gamepad_pilote.getAButton():
+        #     self.intake.set_intake_speed(0.25)
+            
