@@ -18,8 +18,8 @@ class Lift:
         Appelé après l'injection
         """
 
-        self.lift_motor_main = rev.CANSparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.CANSparkMax.MotorType.kBrushless)
-        self.lift_motor_follow = rev.CANSparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.CANSparkMax.MotorType.kBrushless)
+        self.lift_motor_main = rev.SparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless)
+        self.lift_motor_follow = rev.SparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.SparkMax.MotorType.kBrushless)
 
         self.zero_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1)
         self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)

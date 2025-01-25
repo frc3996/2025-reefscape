@@ -15,8 +15,8 @@ class Intake:
         Appelé après l'injection
         """
 
-        self.output_motor = rev.CANSparkMax(constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.CANSparkMax.MotorType.kBrushless)
-        self.intake_motor = rev.CANSparkMax(constants.CANIds.INTAKE_INTAKE_MOTOR, rev.CANSparkMax.MotorType.kBrushless)
+        self.output_motor = rev.SparkMax(constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless)
+        self.intake_motor = rev.SparkMax(constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless)
 
         self.beam_sensor = wpilib.AnalogInput(constants.AnalogIO.INTAKE_BEAM_SENSOR)
 
