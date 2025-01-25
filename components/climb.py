@@ -44,15 +44,10 @@ class Climb:
         # self.climb_raise_motor_main.setOpenLoopRampRate(0.5)
 
         # Follower Climb
-<<<<<<< HEAD
-        self.climb_raise_motor_follower = rev.CANSparkMax(constants.CANIds.CLIMB_RAISE_MOTOR_FOLLOWER, rev.CANSparkMax.MotorType.kBrushless)
-        self.climb_raise_motor_follower.follow(self.climb_raise_motor_main)
-=======
         self.climb_raise_motor_follower = rev.SparkMax(
-            constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless
+            constants.CANIds.CLIMB_RAISE_MOTOR_FOLLOWER, rev.SparkMax.MotorType.kBrushless
         )
         # self.climb_raise_motor_follower.follow(self.climb_raise_motor_main)
->>>>>>> fc0eedb (Big refactoring)
 
         # Limit switch
         self.cage_in_limitswitch_1 = wpilib.DigitalInput(
@@ -69,13 +64,7 @@ class Climb:
         )
 
         # Piston
-<<<<<<< HEAD
         # self.piston_solenoid = self.pneumatic_hub.makeSolenoid(constants.SolenoidChannel.CLIMB_PISTON)
-=======
-        self.piston_solenoid = self.pneumatic_hub.makeSolenoid(
-            constants.SolenoidChannel.CLIMB_PISTON
-        )
->>>>>>> fc0eedb (Big refactoring)
 
     def go_front(self):
         """Move motor shoot position"""
