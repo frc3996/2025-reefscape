@@ -31,7 +31,7 @@ robotpy_extras = [
 ]
 
 # Other pip packages to install
-requires = ["phoenix6", "limelightlib-python"]
+requires = ["numpy", "limelightlib-python"]
 
 [tool.pyright]
 reportMissingTypeStubs = false

@@ -18,7 +18,7 @@ import phoenix6
 import wpilib
 from magicbot import MagicRobot
 from navx import AHRS
-
+import rev
 import constants
 from autonomous.auto_modes import RunAuto
 # from common.arduino_light import I2CArduinoLight
@@ -28,7 +28,7 @@ from components.gyro import Gyro
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 # from components.lift import Lift
-# from components.intake import Intake
+from components.intake import Intake
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
 from components.swervedrive import SwerveDrive, SwerveDriveConfig
 from components.swervemodule import SwerveModule, SwerveModuleConfig
@@ -92,7 +92,7 @@ class MyRobot(MagicRobot):
     # pneumatic_hub: wpilib.PneumaticHub
 
     # intake
-    # intake: Intake
+    intake: Intake
 
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
@@ -118,13 +118,17 @@ class MyRobot(MagicRobot):
         # self.gyro
 
         # Pneumatic Hub
-        self.pneumatic_hub = wpilib.PneumaticHub()
+        # self.pneumatic_hub = wpilib.PneumaticHub()
 
         # Pneumatic Hub
         # pneumatic_hub = wpilib.PneumaticHub()
 
         # Configuration de la base swerve
         self.initSwerve()
+
+        #Intake
+        self.intake_intake_motor = rev.SparkMax(constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless)
+        self.intake_output_motor = rev.SparkMax(constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless)
 
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
@@ -264,6 +268,5 @@ class MyRobot(MagicRobot):
 
         if self.actionStow.is_executing:
             return
-
-        # elif self.gamepad_pilote.getAButton():
-        #     self.intake.set_intake_speed(0.25)
+        elif self.gamepad_pilote.getAButton():
+            self.intake.set_intake_speed(0.25)
