@@ -5,7 +5,8 @@ from typing import cast
 import phoenix6
 import wpimath.trajectory
 from magicbot import feedback, tunable, will_reset_to
-from pathplannerlib.trajectory import SwerveModuleState
+from wpimath.kinematics import SwerveModuleState
+
 from wpimath import controller, geometry, kinematics, units
 from wpimath.geometry import Rotation2d
 

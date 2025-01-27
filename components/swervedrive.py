@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass
 
 import ntcore
-import pathplannerlib.telemetry
+# import pathplannerlib.telemetry
 from magicbot import tunable, will_reset_to
 from wpimath import controller, estimator, geometry, kinematics, trajectory
 from wpimath.estimator import SwerveDrive4PoseEstimator
@@ -303,7 +303,9 @@ class SwerveDrive:
                 self.rearRightModule.getPosition(),
             ),
         )
-        pathplannerlib.telemetry.PPLibTelemetry.setCurrentPose(self.get_odometry_pose())
+        # TODO
+        # Confirm this is not needed
+        # pathplannerlib.telemetry.PPLibTelemetry.setCurrentPose(self.get_odometry_pose())
 
     def get_odometry_pose(self) -> geometry.Pose2d:
         """
