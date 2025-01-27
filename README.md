@@ -26,3 +26,11 @@ self.nt.putNumber("frontRightModule/rotation_zero", 109)
 self.nt.putNumber("rearLeftModule/rotation_zero", 330)
 self.nt.putNumber("rearRightModule/rotation_zero", 44)
 ```
+
+
+
+# Problème de mémoire
+Sur le RIO 1, il manque de RAM pour l'ensemble des librairies.
+Désactiver le NIWebUI avec `robotpy installer niweb disable`
+
+Il doit être réactivé pour performer une update de firmware ou ré-imager
