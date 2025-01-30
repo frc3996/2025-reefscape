@@ -252,12 +252,13 @@ class MyRobot(MagicRobot):
 
         if self.gamepad_pilote.getRawButton(1):
             print("Pressed!")
+            self.intake.set_intake_speed(0.25)
             self.gamepad_pilote.setOutputs(0)
-            self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 1)
+            # self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 1)
         else:
             print("Released!")
             self.gamepad_pilote.setOutputs(1)
-            self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 0)
+            # self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 0)
 
         self.drivetrain.set_controller_values(
             self.gamepad_pilote.getLeftY(),
@@ -268,5 +269,3 @@ class MyRobot(MagicRobot):
 
         if self.actionStow.is_executing:
             return
-        elif self.gamepad_pilote.getAButton():
-            self.intake.set_intake_speed(0.25)
