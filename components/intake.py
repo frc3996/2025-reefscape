@@ -2,13 +2,13 @@
 import wpilib
 import constants
 import rev
-from magicbot import tunable, will_reset_to, StateMachine
+from magicbot import tunable, will_reset_to, StateMachine, feedback
 from magicbot.state_machine import state, timed_state
 
 
 class Intake:
     max_speed = tunable(1)
-    analog_threshold = tunable(2048)
+    beam_analog_threshold = tunable(204)
     __target_intake_speed = will_reset_to(0)
     __target_output_speed = will_reset_to(0)
     intake_motor: rev.SparkMax
@@ -56,6 +56,13 @@ class Intake:
         """Désactive le moteur de l'intake"""
         self.set_output_speed(0)
 
+    @feedback
+    def piece_chargee(self) -> bool:
+        if self.beam_sensor.getValue() < self.beam_analog_threshold:
+            return True
+        else:
+            return False
+
     def execute(self):
         """
         Cette fonction est appelé à chaque itération/boucle
@@ -64,5 +71,53 @@ class Intake:
         self.intake_motor.set(max(min(self.__target_intake_speed, self.max_speed), -self.max_speed))
         self.output_motor.set(max(min(self.__target_output_speed, self.max_speed), -self.max_speed))
 
-class intakeAction(StateMachine):
-    pass
+class IntakeEntreeSortieAction(StateMachine):
+    intake: Intake
+    VITESSE_MOTEUR : float = 0.25
+    actif : bool = False
+
+    @state(first=True)
+    def intakeEnAttente(self):
+        print("Demarrage de l'attente - intake")
+        if self.actif:
+            if self.intake.piece_chargee():
+                self.next_state("intakeSortie")
+            else:
+                self.next_state("intakeEntree")
+
+    @state
+    def intakeEntree(self):
+        print("Demarrage de l'entree - intake")
+        if self.actif:
+            if self.intake.piece_chargee():
+                self.intake.set_intake_speed(0)
+                self.intake.set_output_speed(0)
+                self.next_state("intakeEnAttente")
+            else:
+                self.intake.set_intake_speed(self.VITESSE_MOTEUR)
+                self.intake.set_output_speed(-(self.VITESSE_MOTEUR))
+        else:
+            self.next_state("intakeEnAttente")
+
+    @state
+    def intakeSortie(self):
+        print("Demarrage de la sortie intake")
+        if self.actif:
+            if self.intake.piece_chargee():
+                self.intake.set_intake_speed(self.VITESSE_MOTEUR)
+                self.intake.set_output_speed(self.VITESSE_MOTEUR)
+                self.next_state("intakeEnAttente")
+            else:
+                self.next_state("intakeFinirSortie")
+        else:
+            self.next_state("intakeEnAttente")
+
+    @timed_state(duration=2, next_state="intakeEnAttente")
+    def intakeFinirSortie(self):
+        print("Demarrage de la finition de la sortie intake")
+
+    def estEnAttente(self) -> bool:
+        return self.current_state == "intakeEnAttente"
+
+    def activer(self, actif : bool):
+        self.actif = actif

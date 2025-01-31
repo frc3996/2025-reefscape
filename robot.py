@@ -28,7 +28,7 @@ from components.gyro import Gyro
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 # from components.lift import Lift
-from components.intake import Intake
+from components.intake import Intake, IntakeEntreeSortieAction
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
 from components.swervedrive import SwerveDrive, SwerveDriveConfig
 from components.swervemodule import SwerveModule, SwerveModuleConfig
@@ -58,6 +58,7 @@ class MyRobot(MagicRobot):
     actionStow: ActionStow
     actionIntake: ActionIntake
     actionPathTester: ActionPathTester
+    actionIntakeEntree: IntakeEntreeSortieAction
 
     ##### LOW Level components #####
 
@@ -250,15 +251,10 @@ class MyRobot(MagicRobot):
     def teleopPeriodic(self):
         """Cette fonction est appelée de façon périodique lors du mode téléopéré."""
 
-        if self.gamepad_pilote.getRawButton(1):
-            print("Pressed!")
-            self.intake.set_intake_speed(0.25)
-            self.gamepad_pilote.setOutputs(0)
-            # self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 1)
-        else:
-            print("Released!")
-            self.gamepad_pilote.setOutputs(1)
-            # self.gamepad_pilote.setRumble(self.gamepad_pilote.RumbleType.kBothRumble, 0)
+        # Gestion du component
+        # self.actionIntakeEntree.engage()
+        # if self.gamepad_pilote.getRawButton(1):
+        #     self.actionIntakeEntree.activer(True)
 
         self.drivetrain.set_controller_values(
             self.gamepad_pilote.getLeftY(),
