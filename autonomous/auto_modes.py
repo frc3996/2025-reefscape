@@ -130,7 +130,7 @@ class RunAuto(AutonomousStateMachine):
             self.next_state("execute_next_command")
 
 
-class taxi(RunAuto):
-    DEFAULT: bool = True
-    MODE_NAME: str = "Taxi"
-    PATH_NAME: str = "Taxi"
+# class taxi(RunAuto):
+#     DEFAULT: bool = True
+#     MODE_NAME: str = "Taxi"
+#     PATH_NAME: str = "Taxi"

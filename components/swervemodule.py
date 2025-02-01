@@ -1,198 +1,319 @@
+###################################################################################
+# MIT License
+#
+# Copyright (c) PhotonVision
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+###################################################################################
 import math
-from dataclasses import dataclass
-from typing import cast
+from typing import final
 
 import phoenix6
+import phoenix6.sim
+import wpilib
+import wpilib.simulation
+import wpimath.controller
+import wpimath.filter
+import wpimath.geometry
+import wpimath.kinematics
 import wpimath.trajectory
-from magicbot import feedback, tunable, will_reset_to
-from wpimath.kinematics import SwerveModuleState
+import wpimath.units
+from phoenix6.configs import MagnetSensorConfigs
 
-from wpimath import controller, geometry, kinematics, units
-from wpimath.geometry import Rotation2d
-
-import constants
-from common import tools
-
-
-# Classe de configuration des swerve
-@dataclass
-class SwerveModuleConfig:
-    nt_name: str
-    inverted: bool
-    allow_reverse: bool
-    rotation_zero: int
+kWheelRadius = 0.0508
+kEncoderResolution = 4096
+kModuleMaxAngularVelocity = math.pi
+kModuleMaxAngularAcceleration = math.tau
 
 
+class DriveEncoder:
+    wheel_circumference_meter = math.pi * wpimath.units.inchesToMeters(4.0)
+    wheel_gear_ratio: float = 6.12  # L1=8.14; L2=6.75; L3=6.12
+    kVelocityToRpsConversionFactor: float = wheel_gear_ratio / wheel_circumference_meter
+
+    def __init__(self, motor: phoenix6.hardware.TalonFX):
+        self.motor: phoenix6.hardware.TalonFX = motor
+
+    def getRate(self) -> wpimath.units.meters_per_second:
+        """
+        Returns the drive velocity in meters per second.
+        In simulation the phoenix6 simulation state (see simulationPeriodic) is assumed to be updating
+        the TalonFX sensor readings.
+        """
+        drive_velocity = (
+            self.motor.get_velocity().value / self.kVelocityToRpsConversionFactor
+        )
+        return drive_velocity
+
+    def getDistance(self) -> wpimath.units.meters:
+        """
+        Returns the distance travelled in meters.
+        In simulation the phoenix6 simulation state (see simulationPeriodic) is assumed to be updating
+        the TalonFX sensor readings.
+        """
+        drive_distance = (
+            self.motor.get_position().value / self.kVelocityToRpsConversionFactor
+        )
+        return drive_distance
+
+    def setDistancePerPulse(self, dpp: float):
+        # In simulation and on real hardware you might store this conversion factor if needed.
+        self.distancePerPulse = dpp
+
+
+class TurningEncoder:
+    def __init__(self, encoder: phoenix6.hardware.CANcoder):
+        self.encoder: phoenix6.hardware.CANcoder = encoder
+
+    def getRate(self) -> wpimath.units.radians_per_second:
+        rotation_velocity = self.encoder.get_velocity().value
+        return rotation_velocity
+
+    def getDistance(self) -> wpimath.units.radians:
+        # Assume the CANcoder returns rotations; convert to radians.
+        rotation_distance = self.encoder.get_absolute_position().value * math.tau
+        return rotation_distance
+
+    def setDistancePerPulse(self, dpp: float):
+        self.distancePerPulse = dpp
+
+
+@final
 class SwerveModule:
-    # Vas chercher moteur, encodeur et configuration par injection
-    is_sim: bool
-    driveMotor: phoenix6.hardware.TalonFX
-    rotateMotor: phoenix6.hardware.TalonFX
-    encoder: phoenix6.hardware.CANcoder
-    cfg: SwerveModuleConfig
-
-    kP: tunable[float] = tunable(0.005)
-    kI: tunable[float] = tunable(0.0)
-    kD: tunable[float] = tunable(0.0)
-
-    calibration_mode: tunable[bool] = tunable(False)
-    encoder_zero: tunable[float] = tunable(0.0)
-
-    def setup(self):
+    def __init__(
+        self,
+        driveMotorChannel: int,
+        turningMotorChannel: int,
+        turningEncoderChannel: int,
+        moduleNumber: int,
+        rotation_zero: int,
+    ) -> None:
         """
-        Appelé après l'injection
-        """
-        self.encoder_zero = self.cfg.rotation_zero
-        # General
-        # meter_per_second = (rps / gear_ratio) * wheel_circumference_meter
-        # rps = meter_per_second * gear_ratio / wheel_circumference_meter
-        fudge_factor = 1
-        wheel_circumference_meter = math.pi * units.inchesToMeters(4.0)
-        wheel_gear_ratio = 6.12  # L1=8.14; L2=6.75; L3=6.12
-        self.velocity_to_rps_conversion_factor: float = (
-            wheel_gear_ratio / wheel_circumference_meter * fudge_factor
-        )
-        self.sim_currentPosition: kinematics.SwerveModulePosition = (
-            kinematics.SwerveModulePosition()
-        )
-        self.targetState: kinematics.SwerveModuleState = kinematics.SwerveModuleState()
+        Constructs a SwerveModule with a drive motor, turning motor, drive encoder and turning encoder.
 
-        # Drive Motor
-        config = phoenix6.configs.TalonFXConfiguration()
-        config.open_loop_ramps = phoenix6.configs.OpenLoopRampsConfigs().with_duty_cycle_open_loop_ramp_period(
-            0.1
-        )
-        config.slot0.k_p = 0.08
-        config.slot0.k_i = 0.0
-        config.slot0.k_d = 0.0001
-        config.slot0.k_v = 0.12
-        config.voltage.peak_forward_voltage = 8
-        config.voltage.peak_forward_voltage = -8
-        motor_config = phoenix6.configs.MotorOutputConfigs()
-        motor_config.inverted = phoenix6.signals.InvertedValue.CLOCKWISE_POSITIVE
-        config.motor_output = motor_config
-        self.driveMotor.configurator.apply(config)  # type: ignore
-        self.driveMotor_control = phoenix6.controls.VelocityVoltage(
-            0, 0, True, 0, 0, False, False, False
+        :param driveMotorChannel:      PWM output for the drive motor.
+        :param turningMotorChannel:    PWM output for the turning motor.
+        :param turningEncoderChannel: DIO input for the turning encoder channel A
+        """
+        self.moduleNumber = moduleNumber
+        self.desiredState = wpimath.kinematics.SwerveModuleState()
+        self.driveMotor = phoenix6.hardware.TalonFX(driveMotorChannel)
+        self.turningMotor = phoenix6.hardware.TalonFX(turningMotorChannel)
+        self.rotation_zero = rotation_zero
+        self.talon_set_config(self.turningMotor)
+
+        self.driveEncoder = DriveEncoder(self.driveMotor)
+        self.turningEncoder = TurningEncoder(
+            phoenix6.hardware.CANcoder(turningEncoderChannel)
         )
 
-        # Rotation Motor
-        config = phoenix6.configs.TalonFXConfiguration()
-        config.open_loop_ramps = phoenix6.configs.OpenLoopRampsConfigs().with_duty_cycle_open_loop_ramp_period(
-            0.01
+        # Gains are for example purposes only – must be determined for your own robot!
+        self.drivePIDController = wpimath.controller.PIDController(10, 0, 0)
+        self.turningPIDController = wpimath.controller.PIDController(30, 0, 0)
+        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(1, 3)
+
+        # Set the distance per pulse for the drive encoder. We can simply use the
+        # distance traveled for one rotation of the wheel divided by the encoder
+        # resolution.
+        self.driveEncoder.setDistancePerPulse(
+            math.tau * kWheelRadius / kEncoderResolution
         )
-        motor_config = phoenix6.configs.MotorOutputConfigs()
-        motor_config.inverted = phoenix6.signals.InvertedValue.CLOCKWISE_POSITIVE
-        config.motor_output = motor_config
-        self.rotateMotor.configurator.apply(config)  # type: ignore
-        self.rotateMotor_control = phoenix6.controls.DutyCycleOut(0)
 
-        self.rotation_pid = controller.PIDController(
-            self.kP, self.kI, self.kD
-        )  # PID configuré via le ShuffleBoard
-        self.rotation_pid.enableContinuousInput(
-            0, 360
-        )  # 0 et 360 sont considérés comme la même valeur
+        # Set the distance (in this case, angle) in radians per pulse for the turning encoder.
+        # This is the the angle through an entire rotation (2 * pi) divided by the
+        # encoder resolution.
+        self.turningEncoder.setDistancePerPulse(math.tau / kEncoderResolution)
 
-        cancoder_config = phoenix6.configs.CANcoderConfiguration()
-        # cancoder_config.magnet_sensor.absolute_sensor_range = (
-        #     phoenix6.signals.AbsoluteSensorRangeValue.SIGNED_PLUS_MINUS_HALF
-        # )
-        self.encoder.configurator.apply(cancoder_config)
+        # Limit the PID Controller's input range between -pi and pi and set the input
+        # to be continuous.
+        self.turningPIDController.enableContinuousInput(-math.pi, math.pi)
 
-        self.driveMotor.get_position().set_update_frequency(10)
-        self.rotateMotor.get_position().set_update_frequency(10)
-        self.encoder.get_absolute_position().set_update_frequency(10)
-        self.driveMotor.optimize_bus_utilization()
-        self.rotateMotor.optimize_bus_utilization()
-        self.encoder.optimize_bus_utilization()
-
-    def on_enable(self):
-        self.rotation_pid.setP(self.kP)
-        self.rotation_pid.setI(self.kI)
-        self.rotation_pid.setD(self.kD)
-
-    def flush(self):
-        """
-        Remets à Zéro l'angle et la vitesse demandé
-        ainsi que le PID
-        """
-        self._requested_degree = self.get_encoder_rotation().degrees()
-        self._requested_speed = 0
-        self.rotation_pid.reset()
-
-    def get_encoder_rotation(self) -> Rotation2d:
-        """Retourne la position actuelle de l'encodeur"""
-        abs_pos = Rotation2d(self.encoder.get_absolute_position().value * math.tau)
-        rotation = abs_pos + Rotation2d.fromDegrees(self.encoder_zero)
-        return rotation
-
-    def resetPose(self):
-        if self.is_sim:
-            self.sim_currentPosition = kinematics.SwerveModulePosition(
-                0, self.targetState.angle
-            )
-        else:
-            self.driveMotor.set_position(0)
-
-    def setTargetState(self, targetState: SwerveModuleState):
-        self.targetState.optimize(targetState.angle)
-
-    def getPosition(self):
-        """
-        Return Swerve module position
-        """
-        if self.is_sim:
-            return self.sim_currentPosition
-
-        drive_position = (
-            self.driveMotor.get_position().value
-            / self.velocity_to_rps_conversion_factor
+        # --- Simulation Support ---
+        self.simDrivingMotorFilter = wpimath.filter.LinearFilter.singlePoleIIR(
+            0.1, 0.02
         )
-        result = kinematics.SwerveModulePosition(
-            -drive_position, self.get_encoder_rotation()
+        self.simTurningMotorFilter = wpimath.filter.LinearFilter.singlePoleIIR(
+            0.0001, 0.02
         )
-        return result
 
-    def process(self):
-        """
-        Utilise le PID pour se rendre à la position demandée.
-        Modifie la puissance des moteurs pour celle demandée.
+        # These simulation state variables keep track of the “true” positions.
+        self.simDrivingEncoderPos = 0.0
+        self.simTurningEncoderPos = 0.0
 
-        Appelé à chaque itération/boucle
-        """
-        # Reversing the wheel direction if angle is greater than 90 degree
-        rotation_offset = self.targetState.angle - self.get_encoder_rotation()
-        if self.cfg.allow_reverse:
-            if rotation_offset.degrees() < -90 or rotation_offset.degrees() > 90:
-                self.targetState.speed *= -1
-                self.targetState.angle += Rotation2d(math.pi)
+    def talon_set_config(self, talonfx: phoenix6.hardware.TalonFX):
+        # cfg = phoenix6.configs.TalonFXConfiguration()
+        #
+        # # Voltage-based velocity requires a velocity feed forward to account for the back-emf of the motor
+        # cfg.slot0.k_s = 0.1  # To account for friction, add 0.1 V of static feedforward
+        # cfg.slot0.k_v = 0.12  # Kraken X60 is a 500 kV motor, 500 rpm per V = 8.333 rps per V, 1/8.33 = 0.12 volts / rotation per second
+        # cfg.slot0.k_p = 0.11  # An error of 1 rotation per second results in 2V output
+        # cfg.slot0.k_i = 0  # No output for integrated error
+        # cfg.slot0.k_d = 0  # No output for error derivative
+        # # Peak output of 8 volts
+        # cfg.voltage.peak_forward_voltage = 8
+        # cfg.voltage.peak_reverse_voltage = -8
+        #
+        # # Torque-based velocity does not require a velocity feed forward, as torque will accelerate the rotor up to the desired velocity by itself
+        # cfg.slot1.k_s = 2.5  # To account for friction, add 2.5 A of static feedforward
+        # cfg.slot1.k_p = 5  # An error of 1 rotation per second results in 5 A output
+        # cfg.slot1.k_i = 0  # No output for integrated error
+        # cfg.slot1.k_d = 0  # No output for error derivative
+        # # Peak output of 40 A
+        # cfg.torque_current.peak_forward_torque_current = 40
+        # cfg.torque_current.peak_reverse_torque_current = -40
 
-        # Scaling speed if wheel is too offset
-        self.targetState.speed *= rotation_offset.cos()
+        cfg = MagnetSensorConfigs()
+        cfg.magnet_offset = wpimath.units.degreesToRotations(self.rotation_zero)
 
-        # Calibration mode
-        if self.calibration_mode:
-            self.targetState.angle = Rotation2d(0)
-            self.targetState.speed = 0.05
+        # Retry config apply up to 5 times, report if failure
+        status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
+        for _ in range(0, 5):
+            status = talonfx.configurator.apply(cfg)
+            if status.is_ok():
+                break
+        if not status.is_ok():
+            print(f"Could not apply configs, error code: {status.name}")
 
-        # Computing the angle PID
-        error = self.rotation_pid.calculate(
-            self.get_encoder_rotation().degrees(), self.targetState.angle.degrees()
+        print("TALON INITIALIZED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+    def getState(self) -> wpimath.kinematics.SwerveModuleState:
+        """Returns the current state of the module."""
+        return wpimath.kinematics.SwerveModuleState(
+            self.driveEncoder.getRate(),
+            wpimath.geometry.Rotation2d(self.turningEncoder.getDistance()),
         )
-        self.rotateMotor_control.output = tools.fit_to_boundaries(error, -1, 1)
-        self.rotateMotor.set_control(self.rotateMotor_control)
 
-        # Setting drive motor speed
-        rps = self.targetState.speed * self.velocity_to_rps_conversion_factor
-        self.driveMotor.set_control(self.driveMotor_control.with_velocity(rps))
+    def getPosition(self) -> wpimath.kinematics.SwerveModulePosition:
+        """Returns the current position of the module."""
+        return wpimath.kinematics.SwerveModulePosition(
+            self.driveEncoder.getDistance(),
+            wpimath.geometry.Rotation2d(self.turningEncoder.getDistance()),
+        )
 
-        # Setting sim values
-        if self.is_sim:
-            self.sim_currentPosition = kinematics.SwerveModulePosition(
-                self.sim_currentPosition.distance + (self.targetState.speed * 0.02),
-                self.targetState.angle,
-            )
+    def setDesiredState(
+        self, desiredState: wpimath.kinematics.SwerveModuleState
+    ) -> None:
+        """Sets the desired state for the module."""
+        self.desiredState = desiredState
 
-    def execute(self):
+        currentRotation = wpimath.geometry.Rotation2d(self.turningEncoder.getDistance())
+
+        # Optimize the reference state to avoid spinning further than 90 degrees.
+        self.desiredState.optimize(currentRotation)
+
+        # Scale speed by cosine of angle error. This scales down movement perpendicular to the desired
+        # direction of travel that can occur when modules change directions. This results in smoother
+        # driving.
+        self.desiredState.speed *= (self.desiredState.angle - currentRotation).cos()
+
+        # Calculate the drive outputs from the PID controllers.
+        driveOutput = self.drivePIDController.calculate(
+            self.driveEncoder.getRate(), self.desiredState.speed
+        )
+        driveFeedforward = self.driveFeedforward.calculate(self.desiredState.speed)
+
+        # Calculate the turning motor output from the turning PID controller.
+        turnOutput = self.turningPIDController.calculate(
+            self.turningEncoder.getDistance(), self.desiredState.angle.radians()
+        )
+
+        self.driveMotor.setVoltage(driveOutput + driveFeedforward)
+        self.turningMotor.setVoltage(turnOutput)
+
+    def getAbsoluteHeading(self) -> wpimath.geometry.Rotation2d:
+        return wpimath.geometry.Rotation2d(self.turningEncoder.getDistance())
+
+    def log(self) -> None:
+        # Logging can be implemented as needed.
         pass
+        # state = self.getState()
+        #
+        # table = "Module " + str(self.moduleNumber) + "/"
+        # wpilib.SmartDashboard.putNumber(
+        #     table + "Steer Degrees",
+        #     math.degrees(wpimath.angleModulus(state.angle.radians())),
+        # )
+        # wpilib.SmartDashboard.putNumber(
+        #     table + "Steer Target Degrees",
+        #     math.degrees(self.turningPIDController.getSetpoint()),
+        # )
+        # wpilib.SmartDashboard.putNumber(table + "Drive Velocity Feet", state.speed_fps)
+        # wpilib.SmartDashboard.putNumber(
+        #     table + "Drive Velocity Target Feet", self.desiredState.speed_fps
+        # )
+        # wpilib.SmartDashboard.putNumber(
+        #     table + "Drive Voltage", self.driveMotor.get() * 12.0
+        # wpilib.SmartDashboard.putNumber(
+        #     table + "Steer Voltage", self.turningMotor.get() * 12.0
+        # )
+
+    def simulationPeriodic(self) -> None:
+        """
+        In simulationPeriodic we update our simulated sensor positions and rates based on the motor outputs.
+        Then we push these values into the vendor simulation state objects so that the encoder classes read them.
+        """
+        # Set the supply voltages
+        _ = self.turningEncoder.encoder.sim_state.set_supply_voltage(
+            wpilib.RobotController.getBatteryVoltage()
+        )
+        _ = self.driveMotor.sim_state.set_supply_voltage(
+            wpilib.RobotController.getBatteryVoltage()
+        )
+        _ = self.turningMotor.sim_state.set_supply_voltage(
+            wpilib.RobotController.getBatteryVoltage()
+        )
+
+        driveSpdRaw = (
+            self.driveMotor.get_motor_voltage().value
+            / 12.0
+            * self.driveFeedforward.maxAchievableVelocity(12.0, 0)
+        )
+        turnSpdRaw = self.turningMotor.get_motor_voltage().value / 0.7
+
+        driveSpd = self.simDrivingMotorFilter.calculate(driveSpdRaw)
+        turnSpd = self.simTurningMotorFilter.calculate(turnSpdRaw)
+
+        # Update our simulated encoder positions (assume a 20 ms loop time).
+        self.simDrivingEncoderPos += 0.02 * driveSpd
+        self.simTurningEncoderPos += 0.02 * turnSpd
+
+        # For the drive motor (TalonFX), update the simulated sensor position and velocity.
+        # (Assuming the TalonFXSim interface provides these methods.)
+        _ = self.driveMotor.sim_state.set_raw_rotor_position(
+            self.simDrivingEncoderPos * self.driveEncoder.kVelocityToRpsConversionFactor
+        )
+        _ = self.driveMotor.sim_state.set_rotor_velocity(
+            driveSpd * self.driveEncoder.kVelocityToRpsConversionFactor
+        )
+
+        # For the turning motor (TalonFX), update its simulation state.
+        _ = self.turningMotor.sim_state.set_raw_rotor_position(
+            wpimath.units.radiansToRotations(self.simTurningEncoderPos)
+        )
+        _ = self.turningMotor.sim_state.set_rotor_velocity(
+            wpimath.units.radiansToRotations(turnSpd)
+        )
+
+        # For the turning encoder (CANcoder), update its simulation state.
+        _ = self.turningEncoder.encoder.sim_state.set_raw_position(
+            wpimath.units.radiansToRotations(self.simTurningEncoderPos)
+        )
+        _ = self.turningEncoder.encoder.sim_state.set_velocity(
+            wpimath.units.radiansToRotations(turnSpd)
+        )

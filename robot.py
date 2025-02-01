@@ -13,25 +13,29 @@ LIME LIGHT
 
 """
 
+from typing import override
+
 import ntcore
-import phoenix6
+import rev
 import wpilib
+import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
-import rev
+
+import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
-# from common.arduino_light import I2CArduinoLight
 from components.field import FieldLayout
-# from components.climb import Climb
 from components.gyro import Gyro
+from components.intake import Intake  # , IntakeEntreeSortieAction
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-# from components.lift import Lift
-from components.intake import Intake, IntakeEntreeSortieAction
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
-from components.swervedrive import SwerveDrive, SwerveDriveConfig
-from components.swervemodule import SwerveModule, SwerveModuleConfig
+
+kRobotToCam = wpimath.geometry.Transform3d(
+    wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
+    wpimath.geometry.Rotation3d.fromDegrees(0.0, -30.0, 0.0),
+)
 
 
 class MyRobot(MagicRobot):
@@ -58,7 +62,7 @@ class MyRobot(MagicRobot):
     actionStow: ActionStow
     actionIntake: ActionIntake
     actionPathTester: ActionPathTester
-    actionIntakeEntree: IntakeEntreeSortieAction
+    # actionIntakeEntree: IntakeEntreeSortieAction
 
     ##### LOW Level components #####
 
@@ -68,12 +72,8 @@ class MyRobot(MagicRobot):
     # Pixy
     pixy: Pixy
 
-    # SwerveDrivecomponents/robot_actions.py
-    frontLeftModule: SwerveModule
-    frontRightModule: SwerveModule
-    rearLeftModule: SwerveModule
-    rearRightModule: SwerveModule
-    drivetrain: SwerveDrive
+    # SwerveDrive
+    drivetrain: swervedrive.SwerveDrive
 
     # FieldLayout
     field_layout: FieldLayout
@@ -97,7 +97,6 @@ class MyRobot(MagicRobot):
 
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
-    is_sim: bool
 
     def createObjects(self):
         """
@@ -106,7 +105,8 @@ class MyRobot(MagicRobot):
         """
         # NetworkTable
         self.nt = ntcore.NetworkTableInstance.getDefault().getTable("robotpy")
-        self.is_sim = self.isSimulation()
+        self.is_sim: bool = self.isSimulation()
+        self.is_real: bool = self.isReal()
 
         # self.arduino_light = I2CArduinoLight(wpilib.I2C.Port.kOnboard, 0x42)
 
@@ -115,8 +115,16 @@ class MyRobot(MagicRobot):
         # self.status_light = wpilib.Solenoid(10, wpilib.PneumaticsModuleType.CTREPCM, 1)
 
         # NAVX
-        # self.navx = AHRS(AHRS.NavXComType.kUSB1)
-        # self.gyro
+        self.navx: AHRS = AHRS.create_spi()
+
+        # PhotonVision
+        # self.cam = PhotonCamera("YOUR CAMERA NAME")
+        # self.camPoseEst = PhotonPoseEstimator(
+        #     AprilTagFieldLayout.loadField(AprilTagField.kDefaultField),
+        #     PoseStrategy.LOWEST_AMBIGUITY,
+        #     self.cam,
+        #     kRobotToCam,
+        # )
 
         # Pneumatic Hub
         # self.pneumatic_hub = wpilib.PneumaticHub()
@@ -124,12 +132,13 @@ class MyRobot(MagicRobot):
         # Pneumatic Hub
         # pneumatic_hub = wpilib.PneumaticHub()
 
-        # Configuration de la base swerve
-        self.initSwerve()
-
-        #Intake
-        self.intake_intake_motor = rev.SparkMax(constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless)
-        self.intake_output_motor = rev.SparkMax(constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless)
+        # Intake
+        self.intake_intake_motor = rev.SparkMax(
+            constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless
+        )
+        self.intake_output_motor = rev.SparkMax(
+            constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless
+        )
 
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
@@ -143,82 +152,6 @@ class MyRobot(MagicRobot):
         self.field = wpilib.Field2d()
         wpilib.SmartDashboard.putData(self.field)
 
-    def initSwerve(self):
-        """
-        Configuration de la base Swerve Drive
-        """
-        # On assigne nos moteurs à nos swerve
-        # Il est important d'utiliser le logiciel de la compagnie pour trouver (ou configurer) les CAN id
-        # On utilise également les encodeurs absolues CAN pour orienter la roue
-        self.drivetrain_cfg = SwerveDriveConfig(
-            base_width=20.75,
-            base_length=22.75,
-        )
-
-        self.frontLeftModule_driveMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_DRIVE_FL
-        )
-        self.frontLeftModule_rotateMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_ROTATE_FL
-        )
-        self.frontLeftModule_encoder = phoenix6.hardware.CANcoder(
-            constants.CANIds.SWERVE_CANCODER_FL
-        )
-        self.frontLeftModule_cfg = SwerveModuleConfig(
-            nt_name="frontLeftModule",
-            inverted=False,
-            allow_reverse=True,
-            rotation_zero=193,
-        )
-
-        self.frontRightModule_driveMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_DRIVE_FR
-        )
-        self.frontRightModule_rotateMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_ROTATE_FR
-        )
-        self.frontRightModule_encoder = phoenix6.hardware.CANcoder(
-            constants.CANIds.SWERVE_CANCODER_FR
-        )
-        self.frontRightModule_cfg = SwerveModuleConfig(
-            nt_name="frontRightModule",
-            inverted=True,
-            allow_reverse=True,
-            rotation_zero=76,
-        )
-
-        self.rearLeftModule_driveMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_DRIVE_RL
-        )
-        self.rearLeftModule_rotateMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_ROTATE_RL
-        )
-        self.rearLeftModule_encoder = phoenix6.hardware.CANcoder(
-            constants.CANIds.SWERVE_CANCODER_RL
-        )
-        self.rearLeftModule_cfg = SwerveModuleConfig(
-            nt_name="rearLeftModule",
-            inverted=True,
-            allow_reverse=True,
-            rotation_zero=216,
-        )
-
-        self.rearRightModule_driveMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_DRIVE_RR
-        )
-        self.rearRightModule_rotateMotor = phoenix6.hardware.TalonFX(
-            constants.CANIds.SWERVE_ROTATE_RR
-        )
-        self.rearRightModule_encoder = phoenix6.hardware.CANcoder(
-            constants.CANIds.SWERVE_CANCODER_RR
-        )
-        self.rearRightModule_cfg = SwerveModuleConfig(
-            nt_name="rearRightModule",
-            inverted=False,
-            allow_reverse=True,
-            rotation_zero=318,
-        )
-
     def disabledInit(self) -> None:
         pass
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
@@ -231,7 +164,7 @@ class MyRobot(MagicRobot):
     def autonomousInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
         self.actionStow.done()
-        self.limelight_vision.light_off()
+        # self.limelight_vision.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
         pass
 
@@ -243,25 +176,24 @@ class MyRobot(MagicRobot):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
         self.pdp.clearStickyFaults()
-        self.limelight_vision.light_off()
+        # self.limelight_vision.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
         self.actionStow.engage()
-        self.drivetrain.permanent_snap = False
 
-    def teleopPeriodic(self):
-        """Cette fonction est appelée de façon périodique lors du mode téléopéré."""
+    @override
+    def robotPeriodic(self) -> None:
+        # camEstPose = self.camPoseEst.update()
+        # if camEstPose:
+        #     self.drivetrain.addVisionPoseEstimate(
+        #         camEstPose.estimatedPose, camEstPose.timestampSeconds
+        #     )
+        self.drivetrain.updateOdometry()
+        self.drivetrain.log()
 
-        # Gestion du component
-        # self.actionIntakeEntree.engage()
-        # if self.gamepad_pilote.getRawButton(1):
-        #     self.actionIntakeEntree.activer(True)
+    @override
+    def teleopPeriodic(self) -> None:
+        xSpeed = -1.0 * self.gamepad_pilote.getLeftY() * swervedrive.kMaxSpeed
+        ySpeed = -1.0 * self.gamepad_pilote.getLeftX() * swervedrive.kMaxSpeed
+        rot = -1.0 * self.gamepad_pilote.getRawAxis(2) * swervedrive.kMaxAngularSpeed
 
-        self.drivetrain.set_controller_values(
-            self.gamepad_pilote.getLeftY(),
-            self.gamepad_pilote.getLeftX(),
-            self.gamepad_pilote.getRightX(),
-            self.gamepad_pilote.getRightY(),
-        )
-
-        if self.actionStow.is_executing:
-            return
+        self.drivetrain.drive(xSpeed, ySpeed, rot, True, 0.2)

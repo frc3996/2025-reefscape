@@ -1,35 +1,27 @@
+import traceback
+
 from navx import AHRS
 from wpimath.geometry import Rotation2d
 from wpimath.kinematics import ChassisSpeeds
 
 
 class Gyro:
-    # navx: AHRS
-    is_sim: bool
+    navx: AHRS
+    is_real: bool
 
-    def setup(self):
-        self.sim_angle: Rotation2d = Rotation2d(0)
-
-    def reset(self, current_rotation: Rotation2d):
-        pass
-        # if not self.is_sim:
-        #     self.navx.reset()
-
-    def update(self, chassis_speed: ChassisSpeeds):
-        self.sim_angle = self.sim_angle + Rotation2d.fromDegrees(
-            chassis_speed.omega * 1 * 20
-        )
+    def reset(self):
+        self.navx.reset()
 
     def getRotation2d(self) -> Rotation2d:
         # Get angle from navx!
-        if self.is_sim:
-            return self.sim_angle
+        if self.navx.isConnected():
+            # print(f"NAVX = {self.navx.getRotation2d()}")
+            return self.navx.getRotation2d()
 
-        # if self.navx.isConnected():
-        #     return self.navx.getRotation2d()
-        #Bidon
-        return Rotation2d()
-        # raise Exception("ABORT")
+        if self.is_real:
+            raise Exception(f"NAVX IS DISCONNECTED {traceback.extract_stack()}")
+        else:
+            return self.navx.getRotation2d()
 
     def execute(self):
         pass
