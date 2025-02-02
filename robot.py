@@ -13,6 +13,7 @@ LIME LIGHT
 
 """
 
+import math
 from typing import override
 
 import ntcore
@@ -25,6 +26,8 @@ from navx import AHRS
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
+from autonomous.trajectory_follower import TrajectoryFollower
+from common import gamepad_helper
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import Intake  # , IntakeEntreeSortieAction
@@ -63,6 +66,7 @@ class MyRobot(MagicRobot):
     actionIntake: ActionIntake
     actionPathTester: ActionPathTester
     # actionIntakeEntree: IntakeEntreeSortieAction
+    actionTrajectoryFollower: TrajectoryFollower
 
     ##### LOW Level components #####
 
@@ -107,6 +111,7 @@ class MyRobot(MagicRobot):
         self.nt = ntcore.NetworkTableInstance.getDefault().getTable("robotpy")
         self.is_sim: bool = self.isSimulation()
         self.is_real: bool = self.isReal()
+        self.dt: float = self.control_loop_wait_time
 
         # self.arduino_light = I2CArduinoLight(wpilib.I2C.Port.kOnboard, 0x42)
 
@@ -115,7 +120,8 @@ class MyRobot(MagicRobot):
         # self.status_light = wpilib.Solenoid(10, wpilib.PneumaticsModuleType.CTREPCM, 1)
 
         # NAVX
-        self.navx: AHRS = AHRS.create_spi()
+        # self.navx: AHRS = AHRS.create_spi()
+        self.navx: AHRS = AHRS(AHRS.NavXComType.kMXP_UART)
 
         # PhotonVision
         # self.cam = PhotonCamera("YOUR CAMERA NAME")
@@ -192,8 +198,17 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        xSpeed = -1.0 * self.gamepad_pilote.getLeftY() * swervedrive.kMaxSpeed
-        ySpeed = -1.0 * self.gamepad_pilote.getLeftX() * swervedrive.kMaxSpeed
-        rot = -1.0 * self.gamepad_pilote.getRawAxis(2) * swervedrive.kMaxAngularSpeed
+        leftY = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftY(), 0.1)
+        leftX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftX(), 0.1)
+        rightX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getRawAxis(2), 0.1)
 
-        self.drivetrain.drive(xSpeed, ySpeed, rot, True, 0.2)
+        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
+        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
+
+        if self.gamepad_pilote.getAButton():
+            self.actionTrajectoryFollower.engage()
+        else:
+            self.actionTrajectoryFollower.done()
+
+        self.drivetrain.drive(xSpeed, ySpeed, rot, True)

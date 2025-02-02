@@ -23,7 +23,7 @@ class PhysicsEngine:
         :param robot: your robot object
         """
         self.robot = robot
-        self.navx = wpilib.simulation.SimDeviceSim("navX-Sensor[4]")
+        self.navx = wpilib.simulation.SimDeviceSim("navX-Sensor[1]")
         self.navx_yaw = self.navx.getDouble("Yaw")
         self.navx_rate = self.navx.getDouble("Rate")
 
@@ -45,14 +45,5 @@ class PhysicsEngine:
         self.robot.drivetrain.simulationPeriodic()
 
         # NavX (SPI interface)
-        self.navx_yaw.set(
-            self.navx_yaw.get()
-            + 0
-            # self.robot.drivetrain.poseEst.getEstimatedPosition().rotation().radians()
-            # + self.robot.drivetrain.getChassisSpeeds().omega * 0.02
-        )
-
         self.navx_rate.set(-1.0 * self.robot.drivetrain.getChassisSpeeds().omega_dps)
         self.navx_yaw.set(self.navx_yaw.get() + self.navx_rate.get() * 0.02)
-        # self.simGyro.setRate(-1.0 * self.getChassisSpeeds().omega_dps)
-        # self.simGyro.setAngle(self.simGyro.getAngle() + self.simGyro.getRate() * 0.02)

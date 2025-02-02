@@ -32,6 +32,8 @@ import wpilib.simulation
 import wpimath.estimator
 import wpimath.geometry
 import wpimath.kinematics
+import wpimath.units
+from magicbot import will_reset_to
 
 import constants
 from components.gyro import Gyro
@@ -39,6 +41,7 @@ from components.gyro import Gyro
 from .swervemodule import SwerveModule
 
 kMaxSpeed = 3.0  # 3 meters per second
+kMaxAccel = 3.0  # 3 meters per second squared
 kMaxAngularSpeed = math.pi  # 1/2 rotation per second
 
 kInitialPose = wpimath.geometry.Pose2d(
@@ -54,6 +57,9 @@ class SwerveDrive:
     """
 
     gyro: Gyro
+    dt: float
+
+    chassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
 
     def setup(self) -> None:
         # For publishing
@@ -135,7 +141,7 @@ class SwerveDrive:
         ySpeed: float,
         rot: float,
         fieldRelative: bool,
-        periodSeconds: float,
+        chassisSpeeds: wpimath.kinematics.ChassisSpeeds | None = None,
     ) -> None:
         """
         Method to drive the robot using joystick info.
@@ -145,21 +151,47 @@ class SwerveDrive:
         :param fieldRelative: Whether the provided x and y speeds are relative to the field.
         :param periodSeconds: Time
         """
-        swerveModuleStates = self.kinematics.toSwerveModuleStates(
-            wpimath.kinematics.ChassisSpeeds.discretize(
-                (
+        if not chassisSpeeds:
+            if fieldRelative:
+                chassisSpeeds = (
                     wpimath.kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
                         xSpeed, ySpeed, rot, self.gyro.getRotation2d()
                     )
-                    if fieldRelative
-                    else wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
+                )
+            else:
+                chassisSpeeds = wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
+
+        # Merge all the sources
+        self.chassisSpeeds += chassisSpeeds
+
+        # No speed? LOCK THE WHEELS
+        if chassisSpeeds == wpimath.kinematics.ChassisSpeeds():
+            swerveModuleStates = (
+                wpimath.kinematics.SwerveModuleState(
+                    0, wpimath.geometry.Rotation2d.fromDegrees(-45)
                 ),
-                periodSeconds,
+                wpimath.kinematics.SwerveModuleState(
+                    0, wpimath.geometry.Rotation2d.fromDegrees(45)
+                ),
+                wpimath.kinematics.SwerveModuleState(
+                    0, wpimath.geometry.Rotation2d.fromDegrees(-45)
+                ),
+                wpimath.kinematics.SwerveModuleState(
+                    0, wpimath.geometry.Rotation2d.fromDegrees(45)
+                ),
             )
-        )
+        else:
+            swerveModuleStates = self.kinematics.toSwerveModuleStates(
+                wpimath.kinematics.ChassisSpeeds.discretize(
+                    self.chassisSpeeds,
+                    self.dt,
+                )
+            )
+
         wpimath.kinematics.SwerveDrive4Kinematics.desaturateWheelSpeeds(
             swerveModuleStates, kMaxSpeed
         )
+
         self.frontLeft.setDesiredState(swerveModuleStates[0])
         self.frontRight.setDesiredState(swerveModuleStates[1])
         self.backLeft.setDesiredState(swerveModuleStates[2])
@@ -228,7 +260,15 @@ class SwerveDrive:
     def getChassisSpeeds(self) -> wpimath.kinematics.ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.getModuleStates())
 
-    def get_odometry_pose(self) -> wpimath.geometry.Pose2d:
+    def getVelocity(self) -> wpimath.units.meters_per_second:
+        chassisSpeeds = self.getChassisSpeeds()
+        return math.sqrt(chassisSpeeds.vx**2 + chassisSpeeds.vy**2)
+
+    def getAngularVelocity(self) -> wpimath.units.radians_per_second_squared:
+        chassisSpeeds = self.getChassisSpeeds()
+        return chassisSpeeds.omega
+
+    def getPose(self) -> wpimath.geometry.Pose2d:
         return self.poseEst.getEstimatedPosition()
 
     def log(self):

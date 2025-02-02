@@ -190,8 +190,6 @@ class SwerveModule:
         if not status.is_ok():
             print(f"Could not apply configs, error code: {status.name}")
 
-        print("TALON INITIALIZED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
     def getState(self) -> wpimath.kinematics.SwerveModuleState:
         """Returns the current state of the module."""
         return wpimath.kinematics.SwerveModuleState(
