@@ -121,7 +121,7 @@ class MyRobot(MagicRobot):
 
         # NAVX
         # self.navx: AHRS = AHRS.create_spi()
-        self.navx: AHRS = AHRS(AHRS.NavXComType.kMXP_UART)
+        self.navx: AHRS = AHRS(AHRS.NavXComType.kUSB1)
 
         # PhotonVision
         # self.cam = PhotonCamera("YOUR CAMERA NAME")
@@ -200,7 +200,7 @@ class MyRobot(MagicRobot):
     def teleopPeriodic(self) -> None:
         leftY = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftY(), 0.1)
         leftX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftX(), 0.1)
-        rightX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getRawAxis(2), 0.1)
+        rightX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getRightX(), 0.1)
 
         xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
         ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed

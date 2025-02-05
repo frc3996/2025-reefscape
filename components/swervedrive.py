@@ -33,7 +33,7 @@ import wpimath.estimator
 import wpimath.geometry
 import wpimath.kinematics
 import wpimath.units
-from magicbot import will_reset_to
+from magicbot import tunable, will_reset_to
 
 import constants
 from components.gyro import Gyro
@@ -61,9 +61,27 @@ class SwerveDrive:
 
     chassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
 
+    driveP = tunable(0.5)
+    driveI = tunable(0.0)
+    driveD = tunable(0.0)
+    turningP = tunable(0.5)
+    turningI = tunable(0.0)
+    turningD = tunable(0.0)
+
+    swerveModulestate = [
+        wpimath.kinematics.SwerveModuleState(),
+        wpimath.kinematics.SwerveModuleState(),
+        wpimath.kinematics.SwerveModuleState(),
+        wpimath.kinematics.SwerveModuleState(),
+    ]
+
     def setup(self) -> None:
         # For publishing
         nt = ntcore.NetworkTableInstance.getDefault()
+        self.swerveModuleDesiredStatePub = nt.getStructArrayTopic(
+            f"/AdvantageScope/SwerveModulesDesiredState",
+            wpimath.kinematics.SwerveModuleState,
+        ).publish()
         self.swerveModuleStatePub = nt.getStructArrayTopic(
             f"/AdvantageScope/SwerveModulesState", wpimath.kinematics.SwerveModuleState
         ).publish()
@@ -82,6 +100,7 @@ class SwerveDrive:
             constants.CANIds.SWERVE_CANCODER_FL,
             1,
             rotation_zero=193,
+            inverted=False,
         )
         self.frontRight = SwerveModule(
             constants.CANIds.SWERVE_DRIVE_FR,
@@ -89,6 +108,7 @@ class SwerveDrive:
             constants.CANIds.SWERVE_CANCODER_FR,
             2,
             rotation_zero=76,
+            inverted=False,
         )
         self.backLeft = SwerveModule(
             constants.CANIds.SWERVE_DRIVE_RL,
@@ -96,6 +116,7 @@ class SwerveDrive:
             constants.CANIds.SWERVE_CANCODER_RL,
             3,
             rotation_zero=216,
+            inverted=False,
         )
         self.backRight = SwerveModule(
             constants.CANIds.SWERVE_DRIVE_RR,
@@ -103,6 +124,7 @@ class SwerveDrive:
             constants.CANIds.SWERVE_CANCODER_RR,
             4,
             rotation_zero=318,
+            inverted=False,
         )
 
         self.debugField = wpilib.Field2d()
@@ -162,6 +184,7 @@ class SwerveDrive:
                 chassisSpeeds = wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
 
         # Merge all the sources
+        # TODO: Add a weight so controller inputs can go above auto moves?
         self.chassisSpeeds += chassisSpeeds
 
         # No speed? LOCK THE WHEELS
@@ -187,6 +210,7 @@ class SwerveDrive:
                     self.dt,
                 )
             )
+        self.swerveModuleState = swerveModuleStates
 
         wpimath.kinematics.SwerveDrive4Kinematics.desaturateWheelSpeeds(
             swerveModuleStates, kMaxSpeed
@@ -274,6 +298,7 @@ class SwerveDrive:
     def log(self):
         self.estimatedPositionPub.set(self.poseEst.getEstimatedPosition())
         self.swerveModuleStatePub.set(self.getModuleStates())
+        self.swerveModuleDesiredStatePub.set(list(self.swerveModuleState))
 
         # table = "Drive/"
         #
@@ -316,4 +341,40 @@ class SwerveDrive:
         # self.simGyro.setAngle(self.simGyro.getAngle() + self.simGyro.getRate() * 0.02)
 
     def execute(self):
+        self.frontLeft.turningPIDController.setP(self.turningP)
+        self.frontLeft.turningPIDController.setI(self.turningI)
+        self.frontLeft.turningPIDController.setD(self.turningD)
+        self.frontLeft.drivePIDController.setP(self.driveP)
+        self.frontLeft.drivePIDController.setI(self.driveI)
+        self.frontLeft.drivePIDController.setD(self.driveD)
+        self.frontLeft.turningPIDController.reset()
+        self.frontLeft.drivePIDController.reset()
+
+        self.frontRight.turningPIDController.setP(self.turningP)
+        self.frontRight.turningPIDController.setI(self.turningI)
+        self.frontRight.turningPIDController.setD(self.turningD)
+        self.frontRight.drivePIDController.setP(self.driveP)
+        self.frontRight.drivePIDController.setI(self.driveI)
+        self.frontRight.drivePIDController.setD(self.driveD)
+        self.frontRight.turningPIDController.reset()
+        self.frontRight.drivePIDController.reset()
+
+        self.backLeft.turningPIDController.setP(self.turningP)
+        self.backLeft.turningPIDController.setI(self.turningI)
+        self.backLeft.turningPIDController.setD(self.turningD)
+        self.backLeft.drivePIDController.setP(self.driveP)
+        self.backLeft.drivePIDController.setI(self.driveI)
+        self.backLeft.drivePIDController.setD(self.driveD)
+        self.backLeft.turningPIDController.reset()
+        self.backLeft.drivePIDController.reset()
+
+        self.backRight.turningPIDController.setP(self.turningP)
+        self.backRight.turningPIDController.setI(self.turningI)
+        self.backRight.turningPIDController.setD(self.turningD)
+        self.backRight.drivePIDController.setP(self.driveP)
+        self.backRight.drivePIDController.setI(self.driveI)
+        self.backRight.drivePIDController.setD(self.driveD)
+        self.backRight.turningPIDController.reset()
+        self.backRight.drivePIDController.reset()
+
         pass
