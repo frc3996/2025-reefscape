@@ -2,7 +2,7 @@
 import wpilib
 import constants
 import rev
-from magicbot import tunable, will_reset_to, StateMachine
+from magicbot import tunable, will_reset_to, StateMachine, feedback
 from magicbot.state_machine import state, timed_state
 
 
@@ -21,12 +21,14 @@ class Lift:
         self.lift_motor_main = rev.SparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless)
         self.lift_motor_follow = rev.SparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.SparkMax.MotorType.kBrushless)
 
-        self.zero_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1)
-        self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)
-        self.safety_limitswitch_1 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_1)
-        self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
+        self.zero_limitswitch_1_and_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1_AND_2)
+        # self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)
+        self.safety_limitswitch_1_and_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_1_AND_2)
+        # self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
 
-        self.string_encoder = wpilib.AnalogInput(constants.AnalogIO.LIFT_STRING_ENCODER)
+        self.string_encoder = wpilib.Encoder(constants.DigitalIO.LIFT_STRING_ENCODER_1, constants.DigitalIO.LIFT_STRING_ENCODER_2)
+        self.string_encoder.setDistancePerPulse(1)
+        self.string_encoder.setReverseDirection(True)
 
         # self.lift_motor = wpilib.PWMMotorController("DemoMotor", constants.PWM_DEMOMOTOR)
 
@@ -52,11 +54,22 @@ class Lift:
         """Modifie l'offset de très peu si probleme"""
         # TODO
 
+    @feedback
+    def obtenirStringDistance(self) -> float:
+        return self.string_encoder.getDistance()
+
+    @feedback
+    def obtenirStringDirection(self) -> bool:
+        return self.string_encoder.getDirection()
+
     def execute(self):
         """
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
+        stringDistance : float = self.obtenirStringDistance()
+        stringDirection : bool = self.obtenirStringDirection()
+        print(f"distance:{stringDistance} direction:{stringDirection}")
 
         # self.lift_motor.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
 
