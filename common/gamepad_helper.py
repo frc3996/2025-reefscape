@@ -37,7 +37,9 @@ def apply_deadzone(value: float, threshold: float) -> float:
     assert 0 <= threshold < 1
     if abs(value) < threshold:
         return 0
-    return (value - math.copysign(threshold, value)) / (1 - threshold)
+    else:
+        return value
+    # return (value - math.copysign(threshold, value)) / (1 - threshold)
 
 
 def map_exponential(value: float, base: float) -> float:

@@ -22,6 +22,7 @@ import wpilib
 import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
+from wpimath.filter import SlewRateLimiter
 
 import components.swervedrive as swervedrive
 import constants
@@ -101,6 +102,12 @@ class MyRobot(MagicRobot):
 
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.leftXFilter: SlewRateLimiter = SlewRateLimiter(3)
+        self.leftYFilter: SlewRateLimiter = SlewRateLimiter(3)
+        self.rightXFilter: SlewRateLimiter = SlewRateLimiter(3)
 
     def createObjects(self):
         """
@@ -198,9 +205,18 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        leftY = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftY(), 0.1)
-        leftX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getLeftX(), 0.1)
-        rightX = gamepad_helper.apply_deadzone(self.gamepad_pilote.getRightX(), 0.1)
+
+        leftY = gamepad_helper.apply_deadzone(
+            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
+        )
+        leftX = gamepad_helper.apply_deadzone(
+            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.2
+        )
+        rightX = gamepad_helper.apply_deadzone(
+            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(2)),
+            0.2,
+            # self.rightXFilter.calculate(self.gamepad_pilote.getRightX(2)), 0.2
+        )
 
         xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
         ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
@@ -208,7 +224,8 @@ class MyRobot(MagicRobot):
 
         if self.gamepad_pilote.getAButton():
             self.actionTrajectoryFollower.engage()
-        else:
+        elif self.gamepad_pilote.getAButtonReleased():
+            # Only call it once..
             self.actionTrajectoryFollower.done()
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
