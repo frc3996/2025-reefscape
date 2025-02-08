@@ -34,15 +34,17 @@ import wpimath.geometry
 import wpimath.kinematics
 import wpimath.units
 from magicbot import tunable, will_reset_to
+from pathplannerlib.trajectory import SwerveModuleState
+from phoenix6.sim import chassis_reference
 
 import constants
 from components.gyro import Gyro
 
 from .swervemodule import SwerveModule
 
-kMaxSpeed = 3.0  # 3 meters per second
-kMaxAccel = 3.0  # 3 meters per second squared
-kMaxAngularSpeed = math.pi  # 1/2 rotation per second
+kMaxSpeed = 5.5  # 3 meters per second
+kMaxAccel = 0.869  # 3 meters per second squared
+kMaxAngularSpeed = 4.931  # rad/sec
 
 kInitialPose = wpimath.geometry.Pose2d(
     wpimath.geometry.Translation2d(1.0, 1.0),
@@ -59,36 +61,10 @@ class SwerveDrive:
     gyro: Gyro
     dt: float
 
-    chassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
-
-    driveP = tunable(0.5)
-    driveI = tunable(0.0)
-    driveD = tunable(0.0)
-    turningP = tunable(0.5)
-    turningI = tunable(0.0)
-    turningD = tunable(0.0)
-
-    swerveModulestate = [
-        wpimath.kinematics.SwerveModuleState(),
-        wpimath.kinematics.SwerveModuleState(),
-        wpimath.kinematics.SwerveModuleState(),
-        wpimath.kinematics.SwerveModuleState(),
-    ]
+    driverChassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
+    autoChassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
 
     def setup(self) -> None:
-        # For publishing
-        nt = ntcore.NetworkTableInstance.getDefault()
-        self.swerveModuleDesiredStatePub = nt.getStructArrayTopic(
-            f"/AdvantageScope/SwerveModulesDesiredState",
-            wpimath.kinematics.SwerveModuleState,
-        ).publish()
-        self.swerveModuleStatePub = nt.getStructArrayTopic(
-            f"/AdvantageScope/SwerveModulesState", wpimath.kinematics.SwerveModuleState
-        ).publish()
-        self.estimatedPositionPub = nt.getStructTopic(
-            f"/AdvantageScope/EstimatedPosition", wpimath.geometry.Pose2d
-        ).publish()
-
         self.frontLeftLocation = wpimath.geometry.Translation2d(0.381, 0.381)
         self.frontRightLocation = wpimath.geometry.Translation2d(0.381, -0.381)
         self.backLeftLocation = wpimath.geometry.Translation2d(-0.381, 0.381)
@@ -127,13 +103,6 @@ class SwerveDrive:
             inverted=False,
         )
 
-        self.debugField = wpilib.Field2d()
-        wpilib.SmartDashboard.putData("Drivetrain Debug", self.debugField)
-
-        # self.gyro = Gyro()
-        # self.gyro = wpilib.AnalogGyro(0)
-        # self.simGyro = wpilib.simulation.AnalogGyroSim(self.gyro)
-
         self.kinematics = wpimath.kinematics.SwerveDrive4Kinematics(
             self.frontLeftLocation,
             self.frontRightLocation,
@@ -153,9 +122,44 @@ class SwerveDrive:
             kInitialPose,
         )
 
-        self.targetChassisSpeeds = wpimath.kinematics.ChassisSpeeds()
-
         self.gyro.reset()
+
+        # LOG
+        nt = ntcore.NetworkTableInstance.getDefault()
+        self.swerveModuleDesiredStatePub = nt.getStructArrayTopic(
+            f"/AdvantageScope/DesiredSwerveModuleStates",
+            wpimath.kinematics.SwerveModuleState,
+        ).publish()
+        self.swerveModuleStatePub = nt.getStructArrayTopic(
+            f"/AdvantageScope/SwerveModuleState", wpimath.kinematics.SwerveModuleState
+        ).publish()
+
+        self.estimatedPositionPub = nt.getStructTopic(
+            f"/AdvantageScope/EstimatedPosition", wpimath.geometry.Pose2d
+        ).publish()
+
+        self.swerveDesiredChassisSpeedsPub = nt.getStructTopic(
+            f"/AdvantageScope/DesiredChassisSpeed", wpimath.kinematics.ChassisSpeeds
+        ).publish()
+        self.swerveModuleChassisSpeedsPub = nt.getStructTopic(
+            f"/AdvantageScope/ChassisSpeed", wpimath.kinematics.ChassisSpeeds
+        ).publish()
+
+        self.desiredChassisSpeeds = wpimath.kinematics.ChassisSpeeds()
+        self.desiredSwerveModuleState: tuple[
+            SwerveModuleState, SwerveModuleState, SwerveModuleState, SwerveModuleState
+        ] = (
+            SwerveModuleState(),
+            SwerveModuleState(),
+            SwerveModuleState(),
+            SwerveModuleState(),
+        )
+
+    def drive_auto(
+        self,
+        chassisSpeeds: wpimath.kinematics.ChassisSpeeds,
+    ):
+        self.autoChassisSpeeds = chassisSpeeds
 
     def drive(
         self,
@@ -163,7 +167,6 @@ class SwerveDrive:
         ySpeed: float,
         rot: float,
         fieldRelative: bool,
-        chassisSpeeds: wpimath.kinematics.ChassisSpeeds | None = None,
     ) -> None:
         """
         Method to drive the robot using joystick info.
@@ -173,22 +176,52 @@ class SwerveDrive:
         :param fieldRelative: Whether the provided x and y speeds are relative to the field.
         :param periodSeconds: Time
         """
-        if not chassisSpeeds:
-            if fieldRelative:
-                chassisSpeeds = (
-                    wpimath.kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
-                        xSpeed, ySpeed, rot, self.gyro.getRotation2d()
-                    )
-                )
-            else:
-                chassisSpeeds = wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
+        if fieldRelative:
+            chassisSpeeds = wpimath.kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
+                xSpeed, ySpeed, rot, self.gyro.getRotation2d()
+            )
+        else:
+            chassisSpeeds = wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
 
+        self.driverChassisSpeeds = chassisSpeeds
+
+        self.apply()
+
+    def apply(self):
         # Merge all the sources
-        # TODO: Add a weight so controller inputs can go above auto moves?
-        self.chassisSpeeds += chassisSpeeds
+        # Compute the magnitude of the driver input
+        weightedX = min(abs(self.driverChassisSpeeds.vx) / kMaxSpeed, 1.0)
+        weightedY = min(abs(self.driverChassisSpeeds.vy) / kMaxSpeed, 1.0)
+        weightedRot = min(abs(self.driverChassisSpeeds.omega) / kMaxAngularSpeed, 1.0)
 
-        # No speed? LOCK THE WHEELS
-        if chassisSpeeds == wpimath.kinematics.ChassisSpeeds():
+        # Blend the two sets of speeds
+        blendedX = ((1 - weightedX) * self.autoChassisSpeeds.vx) + (
+            weightedX * self.driverChassisSpeeds.vx
+        )
+
+        blendedY = ((1 - weightedY) * self.autoChassisSpeeds.vy) + (
+            weightedY * self.driverChassisSpeeds.vy
+        )
+
+        blendedRot: float = ((1 - weightedRot) * self.autoChassisSpeeds.omega) + (
+            weightedRot * self.driverChassisSpeeds.omega
+        )
+
+        chassisSpeeds = wpimath.kinematics.ChassisSpeeds(blendedX, blendedY, blendedRot)
+
+        swerveModuleStates = self.kinematics.toSwerveModuleStates(
+            wpimath.kinematics.ChassisSpeeds.discretize(
+                chassisSpeeds,
+                self.dt,
+            )
+        )
+
+        wpimath.kinematics.SwerveDrive4Kinematics.desaturateWheelSpeeds(
+            swerveModuleStates, kMaxSpeed
+        )
+
+        new_speed = self.kinematics.toChassisSpeeds(swerveModuleStates)
+        if new_speed == wpimath.kinematics.ChassisSpeeds():
             swerveModuleStates = (
                 wpimath.kinematics.SwerveModuleState(
                     0, wpimath.geometry.Rotation2d.fromDegrees(-45)
@@ -197,31 +230,21 @@ class SwerveDrive:
                     0, wpimath.geometry.Rotation2d.fromDegrees(45)
                 ),
                 wpimath.kinematics.SwerveModuleState(
-                    0, wpimath.geometry.Rotation2d.fromDegrees(-45)
-                ),
-                wpimath.kinematics.SwerveModuleState(
                     0, wpimath.geometry.Rotation2d.fromDegrees(45)
                 ),
+                wpimath.kinematics.SwerveModuleState(
+                    0, wpimath.geometry.Rotation2d.fromDegrees(-45)
+                ),
             )
-        else:
-            swerveModuleStates = self.kinematics.toSwerveModuleStates(
-                wpimath.kinematics.ChassisSpeeds.discretize(
-                    self.chassisSpeeds,
-                    self.dt,
-                )
-            )
-        self.swerveModuleState = swerveModuleStates
-
-        wpimath.kinematics.SwerveDrive4Kinematics.desaturateWheelSpeeds(
-            swerveModuleStates, kMaxSpeed
-        )
 
         self.frontLeft.setDesiredState(swerveModuleStates[0])
         self.frontRight.setDesiredState(swerveModuleStates[1])
         self.backLeft.setDesiredState(swerveModuleStates[2])
         self.backRight.setDesiredState(swerveModuleStates[3])
 
-        self.targetChassisSpeeds = self.kinematics.toChassisSpeeds(swerveModuleStates)
+        # LOG
+        self.desiredSwerveModuleState = swerveModuleStates
+        self.desiredChassisSpeeds = self.kinematics.toChassisSpeeds(swerveModuleStates)
 
     def updateOdometry(self) -> None:
         """Updates the field relative position of the robot."""
@@ -292,89 +315,32 @@ class SwerveDrive:
         chassisSpeeds = self.getChassisSpeeds()
         return chassisSpeeds.omega
 
-    def getPose(self) -> wpimath.geometry.Pose2d:
-        return self.poseEst.getEstimatedPosition()
-
     def log(self):
+        # The pose
         self.estimatedPositionPub.set(self.poseEst.getEstimatedPosition())
-        self.swerveModuleStatePub.set(self.getModuleStates())
-        self.swerveModuleDesiredStatePub.set(list(self.swerveModuleState))
 
-        # table = "Drive/"
-        #
-        # pose = self.poseEst.getEstimatedPosition()
-        # wpilib.SmartDashboard.putNumber(table + "X", pose.X())
-        # wpilib.SmartDashboard.putNumber(table + "Y", pose.Y())
-        # wpilib.SmartDashboard.putNumber(table + "Heading", pose.rotation().degrees())
-        #
-        # chassisSpeeds = self.getChassisSpeeds()
-        # wpilib.SmartDashboard.putNumber(table + "VX", chassisSpeeds.vx)
-        # wpilib.SmartDashboard.putNumber(table + "VY", chassisSpeeds.vy)
-        # wpilib.SmartDashboard.putNumber(
-        #     table + "Omega Degrees", chassisSpeeds.omega_dps
-        # )
-        #
-        # wpilib.SmartDashboard.putNumber(
-        #     table + "Target VX", self.targetChassisSpeeds.vx
-        # )
-        # wpilib.SmartDashboard.putNumber(
-        #     table + "Target VY", self.targetChassisSpeeds.vy
-        # )
-        # wpilib.SmartDashboard.putNumber(
-        #     table + "Target Omega Degrees", self.targetChassisSpeeds.omega_dps
-        # )
-        #
+        # The current module state
+        self.swerveModuleStatePub.set(self.getModuleStates())
+        # The desired module state
+        self.swerveModuleDesiredStatePub.set(list(self.desiredSwerveModuleState))
+
+        # The current chassisSpeeds
+        self.swerveModuleChassisSpeedsPub.set(self.getChassisSpeeds())
+        # The desired chassisSpeeds
+        self.swerveDesiredChassisSpeedsPub.set(self.desiredChassisSpeeds)
+
         self.frontLeft.log()
         self.frontRight.log()
         self.backLeft.log()
         self.backRight.log()
-        #
-        # self.debugField.getRobotObject().setPose(self.poseEst.getEstimatedPosition())
-        # self.debugField.getObject("SwerveModules").setPoses(self.getModulePoses())
 
     def simulationPeriodic(self):
         self.frontLeft.simulationPeriodic()
         self.frontRight.simulationPeriodic()
         self.backLeft.simulationPeriodic()
         self.backRight.simulationPeriodic()
-        # self.simGyro.setRate(-1.0 * self.getChassisSpeeds().omega_dps)
-        # self.simGyro.setAngle(self.simGyro.getAngle() + self.simGyro.getRate() * 0.02)
 
     def execute(self):
-        self.frontLeft.turningPIDController.setP(self.turningP)
-        self.frontLeft.turningPIDController.setI(self.turningI)
-        self.frontLeft.turningPIDController.setD(self.turningD)
-        self.frontLeft.drivePIDController.setP(self.driveP)
-        self.frontLeft.drivePIDController.setI(self.driveI)
-        self.frontLeft.drivePIDController.setD(self.driveD)
-        self.frontLeft.turningPIDController.reset()
-        self.frontLeft.drivePIDController.reset()
-
-        self.frontRight.turningPIDController.setP(self.turningP)
-        self.frontRight.turningPIDController.setI(self.turningI)
-        self.frontRight.turningPIDController.setD(self.turningD)
-        self.frontRight.drivePIDController.setP(self.driveP)
-        self.frontRight.drivePIDController.setI(self.driveI)
-        self.frontRight.drivePIDController.setD(self.driveD)
-        self.frontRight.turningPIDController.reset()
-        self.frontRight.drivePIDController.reset()
-
-        self.backLeft.turningPIDController.setP(self.turningP)
-        self.backLeft.turningPIDController.setI(self.turningI)
-        self.backLeft.turningPIDController.setD(self.turningD)
-        self.backLeft.drivePIDController.setP(self.driveP)
-        self.backLeft.drivePIDController.setI(self.driveI)
-        self.backLeft.drivePIDController.setD(self.driveD)
-        self.backLeft.turningPIDController.reset()
-        self.backLeft.drivePIDController.reset()
-
-        self.backRight.turningPIDController.setP(self.turningP)
-        self.backRight.turningPIDController.setI(self.turningI)
-        self.backRight.turningPIDController.setD(self.turningD)
-        self.backRight.drivePIDController.setP(self.driveP)
-        self.backRight.drivePIDController.setI(self.driveI)
-        self.backRight.drivePIDController.setD(self.driveD)
-        self.backRight.turningPIDController.reset()
-        self.backRight.drivePIDController.reset()
-
+        # We apply in the drive method, so we can characterize
         pass
+        # self.apply()

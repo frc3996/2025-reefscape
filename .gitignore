@@ -176,3 +176,6 @@ simgui-window.json
 simgui.json
 ctre_sim/*.dat
 tests/ctre_sim/*.dat
+
+# Blender files
+*.blend

@@ -23,7 +23,7 @@ class PhysicsEngine:
         :param robot: your robot object
         """
         self.robot = robot
-        self.navx = wpilib.simulation.SimDeviceSim("navX-Sensor[1]")
+        self.navx = wpilib.simulation.SimDeviceSim("navX-Sensor[2]")
         self.navx_yaw = self.navx.getDouble("Yaw")
         self.navx_rate = self.navx.getDouble("Rate")
 

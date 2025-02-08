@@ -24,6 +24,7 @@
 import math
 from typing import final
 
+import ntcore
 import phoenix6
 import phoenix6.sim
 import wpilib
@@ -34,14 +35,85 @@ import wpimath.geometry
 import wpimath.kinematics
 import wpimath.trajectory
 import wpimath.units
-from phoenix6.configs import MagnetSensorConfigs, MotorOutputConfigs
+from magicbot import tunable
+from phoenix6.configs import (CANcoderConfiguration, MagnetSensorConfigs,
+                              MotorOutputConfigs, TalonFXConfiguration)
 from phoenix6.configs.config_groups import InvertedValue
 from phoenix6.sim.talon_fx_sim_state import rotation
 
-kWheelRadius = 0.0508
-kEncoderResolution = 4096
-kModuleMaxAngularVelocity = math.pi
-kModuleMaxAngularAcceleration = math.tau
+import common.gamepad_helper as tools
+
+
+def drive_talonfx_set_config(talonfx: phoenix6.hardware.TalonFX):
+    _ = talonfx.get_position().set_update_frequency(10)
+    _ = talonfx.optimize_bus_utilization()
+
+    cfg = TalonFXConfiguration()
+    cfg.open_loop_ramps = (
+        phoenix6.configs.OpenLoopRampsConfigs().with_duty_cycle_open_loop_ramp_period(
+            0.01
+        )
+    )
+
+    motor_output = MotorOutputConfigs()
+    cfg.motor_output = motor_output
+
+    # Retry config apply up to 5 times, report if failure
+    status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
+    for _ in range(0, 5):
+        status = talonfx.configurator.apply(cfg)
+        if status.is_ok():
+            break
+    if not status.is_ok():
+        print(f"Could not apply configs, error code: {status.name}")
+
+
+def turning_talonfx_set_config(talonfx: phoenix6.hardware.TalonFX, inverted: bool):
+    _ = talonfx.get_position().set_update_frequency(10)
+    _ = talonfx.optimize_bus_utilization()
+
+    cfg = TalonFXConfiguration()
+    cfg.open_loop_ramps = (
+        phoenix6.configs.OpenLoopRampsConfigs().with_duty_cycle_open_loop_ramp_period(
+            0.01
+        )
+    )
+
+    motor_output = MotorOutputConfigs()
+    if inverted:
+        motor_output.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+    else:
+        motor_output.inverted = InvertedValue.CLOCKWISE_POSITIVE
+
+    cfg.motor_output = motor_output
+
+    # Retry config apply up to 5 times, report if failure
+    status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
+    for _ in range(0, 5):
+        status = talonfx.configurator.apply(cfg)
+        if status.is_ok():
+            break
+    if not status.is_ok():
+        print(f"Could not apply configs, error code: {status.name}")
+
+
+def encoder_set_config(encoder: phoenix6.hardware.CANcoder, rotation_zero: float):
+    cfg = CANcoderConfiguration()
+    magnet_sensor = MagnetSensorConfigs()
+    magnet_sensor.magnet_offset = wpimath.units.degreesToRotations(rotation_zero)
+    cfg.magnet_sensor = magnet_sensor
+
+    # Retry config apply up to 5 times, report if failure
+    status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
+    for _ in range(0, 5):
+        status = encoder.configurator.apply(cfg)
+        if status.is_ok():
+            break
+    if not status.is_ok():
+        print(f"Could not apply configs, error code: {status.name}")
+
+    _ = encoder.get_absolute_position().set_update_frequency(10)
+    _ = encoder.optimize_bus_utilization()
 
 
 class DriveEncoder:
@@ -83,8 +155,9 @@ class DriveEncoder:
 
 
 class TurningEncoder:
-    def __init__(self, encoder: phoenix6.hardware.CANcoder):
+    def __init__(self, moduleNumber: int, encoder: phoenix6.hardware.CANcoder):
         self.encoder: phoenix6.hardware.CANcoder = encoder
+        self.moduleNumber = moduleNumber
 
     def getRate(self) -> wpimath.units.radians_per_second:
         rotation_velocity = self.encoder.get_velocity().value * math.tau
@@ -92,7 +165,8 @@ class TurningEncoder:
 
     def getDistance(self) -> wpimath.units.radians:
         # Assume the CANcoder returns rotations; convert to radians.
-        rotation_distance = self.encoder.get_absolute_position().value * math.tau
+        abs_pos = self.encoder.get_absolute_position().value
+        rotation_distance = abs_pos * math.tau
         return rotation_distance
 
     def setDistancePerPulse(self, dpp: float):
@@ -126,31 +200,18 @@ class SwerveModule:
 
         self.driveEncoder = DriveEncoder(self.driveMotor)
         self.turningEncoder = TurningEncoder(
-            phoenix6.hardware.CANcoder(turningEncoderChannel)
+            moduleNumber, phoenix6.hardware.CANcoder(turningEncoderChannel)
         )
 
-        self.talonfx_set_config(self.turningMotor)
-        self.encoder_set_config(self.turningEncoder)
+        # TalonFX Bull
+        drive_talonfx_set_config(self.driveMotor)
+        turning_talonfx_set_config(self.turningMotor, self.inverted)
+        encoder_set_config(self.turningEncoder.encoder, self.rotation_zero)
 
         # Gains are for example purposes only – must be determined for your own robot!
-        # self.drivePIDController = wpimath.controller.PIDController(10, 0, 0)
-        # self.turningPIDController = wpimath.controller.PIDController(30, 0, 0)
-        # self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(1, 3)
-        self.drivePIDController = wpimath.controller.PIDController(0.8, 0, 0)
-        self.turningPIDController = wpimath.controller.PIDController(0.005, 0, 0)
-        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(0, 0)
-
-        # Set the distance per pulse for the drive encoder. We can simply use the
-        # distance traveled for one rotation of the wheel divided by the encoder
-        # resolution.
-        self.driveEncoder.setDistancePerPulse(
-            math.tau * kWheelRadius / kEncoderResolution
-        )
-
-        # Set the distance (in this case, angle) in radians per pulse for the turning encoder.
-        # This is the the angle through an entire rotation (2 * pi) divided by the
-        # encoder resolution.
-        self.turningEncoder.setDistancePerPulse(math.tau / kEncoderResolution)
+        self.drivePIDController = wpimath.controller.PIDController(1, 0, 0)
+        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(1, 2)
+        self.turningPIDController = wpimath.controller.PIDController(1, 0, 0)
 
         # Limit the PID Controller's input range between -pi and pi and set the input
         # to be continuous.
@@ -167,62 +228,6 @@ class SwerveModule:
         # These simulation state variables keep track of the “true” positions.
         self.simDrivingEncoderPos = 0.0
         self.simTurningEncoderPos = 0.0
-
-    def talonfx_set_config(self, talonfx: phoenix6.hardware.TalonFX):
-        # cfg = phoenix6.configs.TalonFXConfiguration()
-        #
-        # # Voltage-based velocity requires a velocity feed forward to account for the back-emf of the motor
-        # cfg.slot0.k_s = 0.1  # To account for friction, add 0.1 V of static feedforward
-        # cfg.slot0.k_v = 0.12  # Kraken X60 is a 500 kV motor, 500 rpm per V = 8.333 rps per V, 1/8.33 = 0.12 volts / rotation per second
-        # cfg.slot0.k_p = 0.11  # An error of 1 rotation per second results in 2V output
-        # cfg.slot0.k_i = 0  # No output for integrated error
-        # cfg.slot0.k_d = 0  # No output for error derivative
-        # # Peak output of 8 volts
-        # cfg.voltage.peak_forward_voltage = 8
-        # cfg.voltage.peak_reverse_voltage = -8
-        #
-        # # Torque-based velocity does not require a velocity feed forward, as torque will accelerate the rotor up to the desired velocity by itself
-        # cfg.slot1.k_s = 2.5  # To account for friction, add 2.5 A of static feedforward
-        # cfg.slot1.k_p = 5  # An error of 1 rotation per second results in 5 A output
-        # cfg.slot1.k_i = 0  # No output for integrated error
-        # cfg.slot1.k_d = 0  # No output for error derivative
-        # # Peak output of 40 A
-        # cfg.torque_current.peak_forward_torque_current = 40
-        # cfg.torque_current.peak_reverse_torque_current = -40
-
-        cfg = MotorOutputConfigs()
-        if self.inverted:
-            cfg.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
-        else:
-            cfg.inverted = InvertedValue.CLOCKWISE_POSITIVE
-
-        # Retry config apply up to 5 times, report if failure
-        status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
-        for _ in range(0, 5):
-            status = talonfx.configurator.apply(cfg)
-            if status.is_ok():
-                break
-        if not status.is_ok():
-            print(f"Could not apply configs, error code: {status.name}")
-
-    def encoder_set_config(self, encoder: TurningEncoder):
-
-        # cfg = phoenix6.configs.CANcoderConfiguration()
-        # cfg.magnet_sensor.magnet_offset = wpimath.units.degreesToRotations(
-        #     self.rotation_zero
-        # )
-
-        cfg = MagnetSensorConfigs()
-        cfg.magnet_offset = wpimath.units.degreesToRotations(self.rotation_zero)
-
-        # Retry config apply up to 5 times, report if failure
-        status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
-        for _ in range(0, 5):
-            status = encoder.encoder.configurator.apply(cfg)
-            if status.is_ok():
-                break
-        if not status.is_ok():
-            print(f"Could not apply configs, error code: {status.name}")
 
     def getState(self) -> wpimath.kinematics.SwerveModuleState:
         """Returns the current state of the module."""
@@ -262,11 +267,10 @@ class SwerveModule:
 
         # Calculate the turning motor output from the turning PID controller.
         turnOutput = self.turningPIDController.calculate(
-            self.turningEncoder.getDistance(), self.desiredState.angle.radians()
+            currentRotation.radians(), self.desiredState.angle.radians()
         )
 
         # TODO: Add a turn feedforward
-
         self.driveMotor.setVoltage(driveOutput + driveFeedforward)
         self.turningMotor.setVoltage(turnOutput)
 
@@ -274,7 +278,6 @@ class SwerveModule:
         return wpimath.geometry.Rotation2d(self.turningEncoder.getDistance())
 
     def log(self) -> None:
-        # Logging can be implemented as needed.
         pass
         # state = self.getState()
         #
@@ -293,6 +296,7 @@ class SwerveModule:
         # )
         # wpilib.SmartDashboard.putNumber(
         #     table + "Drive Voltage", self.driveMotor.get() * 12.0
+        # )
         # wpilib.SmartDashboard.putNumber(
         #     table + "Steer Voltage", self.turningMotor.get() * 12.0
         # )
@@ -328,7 +332,6 @@ class SwerveModule:
         self.simTurningEncoderPos += 0.02 * turnSpd
 
         # For the drive motor (TalonFX), update the simulated sensor position and velocity.
-        # (Assuming the TalonFXSim interface provides these methods.)
         _ = self.driveMotor.sim_state.set_raw_rotor_position(
             self.simDrivingEncoderPos * self.driveEncoder.kVelocityToRps
         )

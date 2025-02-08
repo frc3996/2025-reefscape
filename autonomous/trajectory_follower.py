@@ -34,7 +34,6 @@ class TrajectoryFollower(StateMachine):
 
     # Inject the control loop wait time
     dt: float
-    nt: ntcore.NetworkTable
 
     def setup(self) -> None:
         super().__init__()
@@ -60,8 +59,12 @@ class TrajectoryFollower(StateMachine):
 
         self.holonomicController.setTolerance(Pose2d(0.01, 0.01, math.radians(5)))
 
+        self.startTime = 0
+
+        # LOG
         # Publish the trajectory for visualization.
-        self.trajectoryPub = self.nt.getStructArrayTopic(
+        nt = ntcore.NetworkTableInstance.getDefault()
+        self.trajectoryPub = nt.getStructArrayTopic(
             f"/AdvantageScope/Trajectory", Pose2d
         ).publish()
 
@@ -104,7 +107,8 @@ class TrajectoryFollower(StateMachine):
         interior: list[Translation2d] = []  # Add interior waypoints if desired.
 
         # Get the real robot position
-        currentPos: Pose2d = self.drivetrain.getPose()
+        currentPos: Pose2d = self.drivetrain.poseEst.getEstimatedPosition()
+        currentTime = wpilib.Timer.getFPGATimestamp()
 
         # Find the heading angle, this is a holonomic drive!
         startTranslation = Translation2d(currentPos.X(), currentPos.Y())
@@ -122,10 +126,24 @@ class TrajectoryFollower(StateMachine):
         try:
             if translation_distance > 0.01:  # Threshold for negligible translation.
                 # Calculate the trajectory
-                self.trajectory = self.generate_trajectory(start, interior, end)
+                if (
+                    initial_call
+                    or self.trajectory.totalTime() < currentTime - self.startTime
+                ):
+                    self.trajectory = self.generate_trajectory(start, interior, end)
+                    self.startTime = currentTime
 
                 # Sample the desired state from your trajectory.
-                desiredState: Trajectory.State = self.trajectory.sample(self.dt)
+                desiredState: Trajectory.State = self.trajectory.sample(
+                    currentTime - self.startTime
+                )
+
+                stray_distance = math.hypot(
+                    desiredState.pose.X() - currentPos.X(),
+                    desiredState.pose.Y() - currentPos.Y(),
+                )
+                if stray_distance > 1:
+                    self.next_state("follow_trajectory")
 
                 chassisSpeeds: ChassisSpeeds = self.holonomicController.calculate(
                     currentPos, desiredState, end.rotation()
@@ -146,13 +164,13 @@ class TrajectoryFollower(StateMachine):
                 self.next_state("finish")
 
         # Command your drivetrain using these speeds.
-        self.drivetrain.drive(0, 0, 0, False, chassisSpeeds)
+        self.drivetrain.drive_auto(chassisSpeeds)
 
-    @state
-    def finish(self, initial_call):
+    @state()
+    def finish(self, initial_call: bool):
         if initial_call:
+            self.drivetrain.drive_auto(ChassisSpeeds())
             print("DESTINATION!")
-        pass
 
     @override
     def done(self) -> None:
@@ -160,5 +178,4 @@ class TrajectoryFollower(StateMachine):
         Called when the trajectory is complete.
         Stop the robot.
         """
-        self.drivetrain.drive(0.0, 0.0, 0.0, True)
         return super().done()
