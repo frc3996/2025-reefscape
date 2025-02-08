@@ -210,7 +210,7 @@ class SwerveModule:
 
         # Gains are for example purposes only – must be determined for your own robot!
         self.drivePIDController = wpimath.controller.PIDController(1, 0, 0)
-        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(1, 3)
+        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(1, 2)
         self.turningPIDController = wpimath.controller.PIDController(1, 0, 0)
 
         # Limit the PID Controller's input range between -pi and pi and set the input

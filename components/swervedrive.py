@@ -42,9 +42,9 @@ from components.gyro import Gyro
 
 from .swervemodule import SwerveModule
 
-kMaxSpeed = 3.0  # 3 meters per second
-kMaxAccel = 3.0  # 3 meters per second squared
-kMaxAngularSpeed = math.pi  # 1/2 rotation per second
+kMaxSpeed = 5.5  # 3 meters per second
+kMaxAccel = 0.869  # 3 meters per second squared
+kMaxAngularSpeed = 4.931  # rad/sec
 
 kInitialPose = wpimath.geometry.Pose2d(
     wpimath.geometry.Translation2d(1.0, 1.0),
@@ -184,6 +184,8 @@ class SwerveDrive:
             chassisSpeeds = wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot)
 
         self.driverChassisSpeeds = chassisSpeeds
+
+        self.apply()
 
     def apply(self):
         # Merge all the sources
@@ -339,4 +341,6 @@ class SwerveDrive:
         self.backRight.simulationPeriodic()
 
     def execute(self):
-        self.apply()
+        # We apply in the drive method, so we can characterize
+        pass
+        # self.apply()

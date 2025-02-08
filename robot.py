@@ -27,6 +27,7 @@ from wpimath.filter import SlewRateLimiter
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
+from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 from autonomous.trajectory_follower import TrajectoryFollower
 from common import gamepad_helper
 from components.field import FieldLayout
@@ -68,6 +69,11 @@ class MyRobot(MagicRobot):
     actionPathTester: ActionPathTester
     # actionIntakeEntree: IntakeEntreeSortieAction
     actionTrajectoryFollower: TrajectoryFollower
+
+    ## SysId
+    actionAngularMaxVelocity: AngularMaxVelocity
+    actionMaxVelocity: MaxVelocity
+    actionMaxAccel: MaxAccel
 
     ##### LOW Level components #####
 
@@ -227,5 +233,11 @@ class MyRobot(MagicRobot):
         elif self.gamepad_pilote.getAButtonReleased():
             # Only call it once..
             self.actionTrajectoryFollower.done()
+
+        if self.gamepad_pilote.getBButton():
+            # self.actionAngularMaxVelocity.engage()
+            # self.actionMaxVelocity.engage()
+            self.actionMaxAccel.engage()
+            return
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
