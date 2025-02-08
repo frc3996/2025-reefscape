@@ -5,13 +5,16 @@ import rev
 from magicbot import tunable, will_reset_to, StateMachine, feedback
 from magicbot.state_machine import state, timed_state
 
-
-INTAKE_POSITION = 10
-
-
 class Lift:
     max_speed = tunable(1)
     __target_speed = will_reset_to(0)
+
+    # les hauteurs sont en metre
+    hauteurDeplacement = tunable(0)
+    hauteurLeve11 = tunable(1) 
+    hauteurLeve12 = tunable(2)
+    hauteurLeve13 = tunable(3)
+    hauteurIntake = tunable(1)
 
     def setup(self):
         """
@@ -20,6 +23,10 @@ class Lift:
 
         self.lift_motor_main = rev.SparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless)
         self.lift_motor_follow = rev.SparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.SparkMax.MotorType.kBrushless)
+
+        sparkConfig = rev.SparkBaseConfig()
+        sparkConfig.follow(constants.CANIds.LIFT_MOTOR_MAIN, False)
+        self.lift_motor_follow.configure(sparkConfig, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
 
         self.zero_limitswitch_1_and_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1_AND_2)
         # self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)
@@ -39,27 +46,39 @@ class Lift:
         # S'assure que la vitesse maximale ne peut pas être dépassée
         self.__target_speed = speed
 
-    def moveLift(self,pos):
-        """Set la hauteur du lift selon la position"""
-        # TODO
+    # TODO effacer??
+    # def moveLift(self,pos):
+    #     """Set la hauteur du lift selon la position"""
+    #     # TODO
+    # def manualOffset():
+    #     """Modifie l'offset de très peu si probleme"""
+    #     # TODO
+
+    def go_intake(self):
+        self.__move_to_position(self.hauteurIntake)
+
+    def go_level1(self):
+        self.__move_to_position(self.hauteurLeve11)
+
+    def go_level2(self):
+        self.__move_to_position(self.hauteurLeve12)
+
+    def go_level3(self):
+        self.__move_to_position(self.hauteurLeve13)
+
+    def go_deplacement(self):
+        self.__move_to_position(self.hauteurDeplacement)
 
     def __move_to_position(self, position):
         """Move the lift to the proper position"""
         # TODO
 
-    def go_intake(self):
-        self.__move_to_position(INTAKE_POSITION)
-
-    def manualOffset():
-        """Modifie l'offset de très peu si probleme"""
-        # TODO
-
     @feedback
-    def obtenirStringDistance(self) -> float:
+    def get_distance(self) -> float:
         return self.string_encoder.getDistance()
 
     @feedback
-    def obtenirStringDirection(self) -> bool:
+    def get_direction(self) -> bool:
         return self.string_encoder.getDirection()
 
     def execute(self):
@@ -67,24 +86,11 @@ class Lift:
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
-        stringDistance : float = self.obtenirStringDistance()
-        stringDirection : bool = self.obtenirStringDirection()
-        print(f"distance:{stringDistance} direction:{stringDirection}")
+        distance : float = self.get_distance()
+        direction : bool = self.get_direction()
+        print(f"distance:{distance} direction:{direction}")
 
-        # self.lift_motor.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
+        self.lift_motor_main.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
+        self.lift_motor_follow.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
 
         target = 0  # Cette valeur sera tunée par un PID
-
-
-
-
-# class LiftActions(StateMachine):
-
-#     lift : Lift
-
-#     def todo(self):
-#         pass
-
-#     @state
-#     def liftMovement(self, pos):
-#         self.lift.moveLift(self, pos)
