@@ -1,4 +1,5 @@
 
+import math
 import wpilib
 import constants
 import rev
@@ -7,14 +8,19 @@ from magicbot.state_machine import state, timed_state
 
 class Lift:
     max_speed = tunable(1)
-    __target_speed = will_reset_to(0)
+    target_speed = tunable(0.1) # TODO ajustement
 
-    # les hauteurs sont en metre
+    # TODO ajuster les valeurs
+    # les hauteurs sont en metres
     hauteurDeplacement = tunable(0)
-    hauteurLeve11 = tunable(1) 
-    hauteurLeve12 = tunable(2)
-    hauteurLeve13 = tunable(3)
-    hauteurIntake = tunable(1)
+    hauteurLeve11 = tunable(2500) 
+    hauteurLeve12 = tunable(5000)
+    hauteurLeve13 = tunable(7500)
+    hauteurIntake = tunable(1000)
+    hauteurMargeErreur = tunable(100)
+
+    # hauteur cible
+    hauteurCible = 0 # TODO quelque chose d'intelligent ici
 
     def setup(self):
         """
@@ -39,13 +45,6 @@ class Lift:
 
         # self.lift_motor = wpilib.PWMMotorController("DemoMotor", constants.PWM_DEMOMOTOR)
 
-    def set_speed(self, speed):
-        """
-        Fait tourner le moteur à la vitesse spécifiée
-        """
-        # S'assure que la vitesse maximale ne peut pas être dépassée
-        self.__target_speed = speed
-
     # TODO effacer??
     # def moveLift(self,pos):
     #     """Set la hauteur du lift selon la position"""
@@ -55,23 +54,22 @@ class Lift:
     #     # TODO
 
     def go_intake(self):
-        self.__move_to_position(self.hauteurIntake)
+        self.__aller_a_hauteur(self.hauteurIntake)
 
     def go_level1(self):
-        self.__move_to_position(self.hauteurLeve11)
+        self.__aller_a_hauteur(self.hauteurLeve11)
 
     def go_level2(self):
-        self.__move_to_position(self.hauteurLeve12)
+        self.__aller_a_hauteur(self.hauteurLeve12)
 
     def go_level3(self):
-        self.__move_to_position(self.hauteurLeve13)
+        self.__aller_a_hauteur(self.hauteurLeve13)
 
     def go_deplacement(self):
-        self.__move_to_position(self.hauteurDeplacement)
+        self.__aller_a_hauteur(self.hauteurDeplacement)
 
-    def __move_to_position(self, position):
-        """Move the lift to the proper position"""
-        # TODO
+    def __aller_a_hauteur(self, hauteur : float):
+        self.hauteurCible = hauteur
 
     @feedback
     def get_distance(self) -> float:
@@ -81,6 +79,22 @@ class Lift:
     def get_direction(self) -> bool:
         return self.string_encoder.getDirection()
 
+    @feedback
+    def get_hauteur_cible(self) -> float:
+        return self.hauteurCible
+
+    @feedback
+    def get_direction_mult_factor(self) -> int:
+        delta = self.hauteurCible - self.get_distance() 
+        if math.fabs(delta) < self.hauteurMargeErreur:
+            return 0
+        elif delta > 0:
+            return 1
+        elif delta < 0:
+            return -1
+        assert(False)
+        return 0
+
     def execute(self):
         """
         Cette fonction est appelé à chaque itération/boucle
@@ -88,9 +102,7 @@ class Lift:
         """
         distance : float = self.get_distance()
         direction : bool = self.get_direction()
-        print(f"distance:{distance} direction:{direction}")
-
-        self.lift_motor_main.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
-        self.lift_motor_follow.set(max(min(self.__target_speed, self.max_speed), -self.max_speed))
-
-        target = 0  # Cette valeur sera tunée par un PID
+        # print(f"distance:{distance} direction:{direction}")
+        dirFacteur = self.get_direction_mult_factor()
+        self.lift_motor_main.set(max(min(dirFacteur * self.target_speed, self.max_speed), -self.max_speed))
+        self.lift_motor_follow.set(max(min(dirFacteur * self.target_speed, self.max_speed), -self.max_speed))
