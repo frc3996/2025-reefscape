@@ -8,7 +8,7 @@ from magicbot.state_machine import state, timed_state
 
 class Intake:
     max_speed = tunable(1)
-    beam_analog_threshold = tunable(204)
+    beam_analog_threshold = tunable(245) # TODO rajouter pull-up 5V
     __target_intake_speed = will_reset_to(0)
     __target_output_speed = will_reset_to(0)
     intake_motor: rev.SparkMax
