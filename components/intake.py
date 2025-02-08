@@ -57,8 +57,12 @@ class Intake:
         self.set_output_speed(0)
 
     @feedback
+    def read_beam_sensor(self) -> float:
+        return self.beam_sensor.getValue()
+
+    @feedback
     def piece_chargee(self) -> bool:
-        if self.beam_sensor.getValue() < self.beam_analog_threshold:
+        if self.read_beam_sensor() < self.beam_analog_threshold:
             return True
         else:
             return False
@@ -71,53 +75,51 @@ class Intake:
         self.intake_motor.set(max(min(self.__target_intake_speed, self.max_speed), -self.max_speed))
         self.output_motor.set(max(min(self.__target_output_speed, self.max_speed), -self.max_speed))
 
-class IntakeEntreeSortieAction(StateMachine):
+
+class ActionIntakeEntree(StateMachine):
     intake: Intake
     VITESSE_MOTEUR : float = 0.25
-    actif : bool = False
 
     @state(first=True)
-    def intakeEnAttente(self):
-        print("Demarrage de l'attente - intake")
-        if self.actif:
-            if self.intake.piece_chargee():
-                self.next_state("intakeSortie")
-            else:
-                self.next_state("intakeEntree")
-
-    @state
     def intakeEntree(self):
         print("Demarrage de l'entree - intake")
-        if self.actif:
-            if self.intake.piece_chargee():
-                self.intake.set_intake_speed(0)
-                self.intake.set_output_speed(0)
-                self.next_state("intakeEnAttente")
-            else:
-                self.intake.set_intake_speed(self.VITESSE_MOTEUR)
-                self.intake.set_output_speed(-(self.VITESSE_MOTEUR))
+        if self.intake.piece_chargee():
+            self.intake.set_intake_speed(0)
+            self.intake.set_output_speed(0)
+            self.next_state("finish")
         else:
-            self.next_state("intakeEnAttente")
+            self.intake.set_intake_speed(self.VITESSE_MOTEUR)
+            self.intake.set_output_speed(-(self.VITESSE_MOTEUR/4))
 
     @state
+    def finish(self):
+        # TODO Flasher lumiere arduino
+        pass
+
+
+class ActionIntakeSortie(StateMachine):
+    intake: Intake
+    VITESSE_MOTEUR : float = 0.25
+    active: bool = True
+
+    @state(first=True)
     def intakeSortie(self):
         print("Demarrage de la sortie intake")
-        if self.actif:
-            if self.intake.piece_chargee():
-                self.intake.set_intake_speed(self.VITESSE_MOTEUR)
-                self.intake.set_output_speed(self.VITESSE_MOTEUR)
-                self.next_state("intakeEnAttente")
-            else:
-                self.next_state("intakeFinirSortie")
-        else:
-            self.next_state("intakeEnAttente")
+        active = True
+        self.intake.set_intake_speed(self.VITESSE_MOTEUR)
+        self.intake.set_output_speed(self.VITESSE_MOTEUR)
+        if not self.intake.piece_chargee():
+            self.next_state("intakeFinirSortie")
 
-    @timed_state(duration=2, next_state="intakeEnAttente")
+
+    @timed_state(duration=0.5, next_state="intakeFinish")
     def intakeFinirSortie(self):
+        self.intake.set_intake_speed(self.VITESSE_MOTEUR)
+        self.intake.set_output_speed(self.VITESSE_MOTEUR)
         print("Demarrage de la finition de la sortie intake")
 
-    def estEnAttente(self) -> bool:
-        return self.current_state == "intakeEnAttente"
-
-    def activer(self, actif : bool):
-        self.actif = actif
+    @state
+    def intakeFinish(self):
+        # TODO Flasher lumiere arduino
+        active = False
+        pass

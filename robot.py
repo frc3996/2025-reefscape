@@ -32,7 +32,7 @@ from autonomous.trajectory_follower import TrajectoryFollower
 from common import gamepad_helper
 from components.field import FieldLayout
 from components.gyro import Gyro
-from components.intake import Intake  # , IntakeEntreeSortieAction
+from components.intake import Intake, ActionIntakeEntree, ActionIntakeSortie
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
@@ -67,7 +67,8 @@ class MyRobot(MagicRobot):
     actionStow: ActionStow
     actionIntake: ActionIntake
     actionPathTester: ActionPathTester
-    # actionIntakeEntree: IntakeEntreeSortieAction
+    action_intake_entree: ActionIntakeEntree
+    action_intake_sortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
 
     ## SysId
