@@ -27,12 +27,15 @@ from wpimath.filter import SlewRateLimiter
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
+from autonomous.pathplanner import ActionPathPlanner
 from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 from autonomous.trajectory_follower import TrajectoryFollower
+from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
+from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
 from components.field import FieldLayout
 from components.gyro import Gyro
-from components.intake import Intake, ActionIntakeEntree, ActionIntakeSortie
+from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
@@ -70,6 +73,12 @@ class MyRobot(MagicRobot):
     action_intake_entree: ActionIntakeEntree
     action_intake_sortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
+    # actionPathTester: ActionPathTester
+    # actionIntakeEntree: IntakeEntreeSortieAction
+    # actionTrajectoryFollower: TrajectoryFollower
+    # actionTrajectoryFollowerV2: TrajectoryFollowerV2
+    # actionPathPlanner: ActionPathPlanner
+    actionPathPlannerV3: ActionPathPlannerV3
 
     ## SysId
     actionAngularMaxVelocity: AngularMaxVelocity
@@ -230,10 +239,16 @@ class MyRobot(MagicRobot):
         rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
         if self.gamepad_pilote.getAButton():
-            self.actionTrajectoryFollower.engage()
+            # self.actionTrajectoryFollower.engage()
+            # self.actionPathPlanner.engage()
+            self.actionPathPlannerV3.engage()
+            # self.actionTrajectoryFollowerV2.engage()
         elif self.gamepad_pilote.getAButtonReleased():
             # Only call it once..
-            self.actionTrajectoryFollower.done()
+            # self.actionTrajectoryFollower.done()
+            # self.actionPathPlanner.done()
+            self.actionPathPlannerV3.done()
+            # self.actionTrajectoryFollowerV2.done()
 
         if self.gamepad_pilote.getBButton():
             # self.actionAngularMaxVelocity.engage()
