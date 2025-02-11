@@ -1,5 +1,6 @@
 import traceback
 
+from magicbot import feedback
 from navx import AHRS
 from wpimath.geometry import Rotation2d
 from wpimath.kinematics import ChassisSpeeds
@@ -8,6 +9,10 @@ from wpimath.kinematics import ChassisSpeeds
 class Gyro:
     navx: AHRS
     is_real: bool
+
+    @feedback
+    def get_angle(self) -> Rotation2d:
+        return self.navx.getRotation2d()
 
     def reset(self):
         self.navx.reset()

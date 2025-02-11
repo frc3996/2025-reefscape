@@ -44,6 +44,14 @@ class PhysicsEngine:
         # Call the components periodic
         self.robot.drivetrain.simulationPeriodic()
 
-        # NavX (SPI interface)
+        # NavX
+        self.navx_yaw.set(-self.robot.drivetrain.getPose().rotation().degrees())
+        # self.navx_yaw.set(
+        #     self.navx_yaw.get()
+        #     + -1.0 * self.robot.drivetrain.getChassisSpeeds().omega_dps * 0.02
+        # )
+        # self.navx_rate.set(-1.0 * self.robot.drivetrain.getChassisSpeeds().omega_dps)
+        # self.navx_yaw.set(self.navx_yaw.get() + self.navx_rate.get() * 0.02)
+
         self.navx_rate.set(-1.0 * self.robot.drivetrain.getChassisSpeeds().omega_dps)
         self.navx_yaw.set(self.navx_yaw.get() + self.navx_rate.get() * 0.02)
