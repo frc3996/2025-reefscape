@@ -34,6 +34,7 @@ import wpimath.geometry
 import wpimath.kinematics
 import wpimath.units
 from magicbot import tunable, will_reset_to
+from pathplannerlib.commands import Pose2d
 from pathplannerlib.trajectory import SwerveModuleState
 from phoenix6.sim import chassis_reference
 
@@ -174,6 +175,9 @@ class SwerveDrive:
             SwerveModuleState(),
         )
 
+    def getPose(self) -> Pose2d:
+        return self.poseEst.getEstimatedPosition()
+
     def drive_auto(
         self,
         chassisSpeeds: wpimath.kinematics.ChassisSpeeds,
@@ -204,7 +208,7 @@ class SwerveDrive:
 
         self.driverChassisSpeeds = chassisSpeeds
 
-        self.apply()
+        # self.apply()
 
     def apply(self):
         # Merge all the sources
@@ -282,7 +286,7 @@ class SwerveDrive:
     ) -> None:
         self.poseEst.addVisionMeasurement(pose.toPose2d(), timestamp)
 
-    def resetPose(self) -> None:
+    def resetPose(self, pose: wpimath.geometry.Pose2d = kInitialPose) -> None:
         self.poseEst.resetPosition(
             self.gyro.getRotation2d(),
             (
@@ -291,7 +295,7 @@ class SwerveDrive:
                 self.backLeft.getPosition(),
                 self.backRight.getPosition(),
             ),
-            kInitialPose,
+            pose,
         )
 
     def getModuleStates(self) -> list[wpimath.kinematics.SwerveModuleState]:
@@ -361,5 +365,4 @@ class SwerveDrive:
 
     def execute(self):
         # We apply in the drive method, so we can characterize
-        pass
-        # self.apply()
+        self.apply()
