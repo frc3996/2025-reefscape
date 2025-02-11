@@ -2,21 +2,27 @@ import math
 from typing import Optional, override
 
 import wpilib
+import wpimath.units
 from commands2 import Subsystem
 from hal import initialize
+from magicbot import timed_state
 from magicbot.state_machine import StateMachine, StateRef, state
 from pathplannerlib.auto import AutoBuilder, FollowPathCommand
 from pathplannerlib.commands import PathfindingCommand
-from pathplannerlib.config import PIDConstants, RobotConfig
+from pathplannerlib.config import (DCMotor, ModuleConfig, PIDConstants,
+                                   RobotConfig, Translation2d)
 from pathplannerlib.controller import PPHolonomicDriveController
 from pathplannerlib.path import (GoalEndState, IdealStartingState,
                                  PathConstraints, PathPlannerPath,
-                                 PathPlannerTrajectory)
+                                 PathPlannerTrajectory, PathPoint,
+                                 RotationTarget)
 from pathplannerlib.pathfinding import Pathfinding
 from wpilib import DriverStation
+from wpimath._controls._controls import controller
 from wpimath.geometry import Pose2d, Rotation2d
 from wpimath.units import degreesToRadians
 
+import robot
 from components import swervedrive
 
 
@@ -35,16 +41,37 @@ class ActionPathPlannerV3(StateMachine):
 
         # Load the RobotConfig from the GUI settings. You should probably
         # store this in your Constants file
-        self.robotConfig = RobotConfig.fromGUISettings()
+        # self.robotConfig: RobotConfig = RobotConfig.fromGUISettings()
+        self.robotConfig: RobotConfig = RobotConfig(
+            70,
+            6.883,
+            ModuleConfig(
+                wpimath.units.inchesToMeters(2.0),
+                swervedrive.kMaxSpeed,
+                1.0,
+                DCMotor.falcon500().withReduction(6.12),
+                17,
+                1,
+            ),
+            moduleOffsets=[
+                Translation2d(0.381, 0.381),
+                Translation2d(0.381, -0.381),
+                Translation2d(-0.381, 0.381),
+                Translation2d(-0.381, -0.381),
+            ],
+        )
 
         # Create the constraints to use while pathfinding
-        self.constraints = PathConstraints(
-            3.0, 4.0, degreesToRadians(540), degreesToRadians(720)
+        # self.constraints = PathConstraints(
+        #     3.0, 4.0, degreesToRadians(540), degreesToRadians(720)
+        # )
+        self.constraints: PathConstraints = PathConstraints.unlimitedConstraints(
+            wpilib.RobotController.getBatteryVoltage()
         )
 
         self.controller: PPHolonomicDriveController = PPHolonomicDriveController(
-            PIDConstants(5.0, 0.0, 0.1),  # Translation PID constants
-            PIDConstants(5.0, 0.0, 0.1),  # Rotation PID constants
+            PIDConstants(7.0, 0.0, 0.0),  # Translation PID constants
+            PIDConstants(7.0, 0.0, 0.0),  # Rotation PID constants
         )
 
         self.subsystem: Subsystem = self.SwerveSubsystem()
@@ -63,11 +90,14 @@ class ActionPathPlannerV3(StateMachine):
 
     @state(first=True)
     def initial(self):
-        self.command = None
+        if self.command:
+            self.command.end(True)
+            self.command = None
         self.next_state_now("generate")
 
     @state()
     def generate(self):
+        print("RECALCULATING")
         # Since we are using a holonomic drivetrain, the rotation component of
         # this pose represents the goal holonomic rotation
         start: Pose2d = self.getPose()
@@ -78,8 +108,9 @@ class ActionPathPlannerV3(StateMachine):
 
         self.next_state("wait_for_path")
 
-    @state()
+    @timed_state(duration=1, next_state="direct")
     def wait_for_path(self):
+        print("WAITING")
         if Pathfinding.isNewPathAvailable():
             self.currentPath: PathPlannerPath = Pathfinding.getCurrentPath(
                 self.constraints, self.goalEndState
@@ -89,7 +120,26 @@ class ActionPathPlannerV3(StateMachine):
                 self.next_state("follow")
 
     @state()
+    def direct(self):
+        print("DIRECT PATH")
+        end = Pose2d(2, 2, Rotation2d(math.pi / 2))
+        self.currentPath = PathPlannerPath.fromPathPoints(
+            [
+                PathPoint(
+                    end.translation(),
+                    RotationTarget(0, end.rotation()),
+                    self.constraints,
+                    0.01,
+                )
+            ],
+            self.constraints,
+            GoalEndState(0.0, end.rotation()),
+        )
+        self.next_state("follow")
+
+    @state()
     def follow(self):
+        print("START")
         self.command: FollowPathCommand = FollowPathCommand(
             self.currentPath,
             self.getPose,
@@ -106,21 +156,29 @@ class ActionPathPlannerV3(StateMachine):
 
     @state()
     def exec(self):
-        print(f"ERROR: {self.controller.getPositionalError()}")
-        if self.controller.getPositionalError() > 1:
-            self.next_state("generate")
-        elif self.command.isFinished():
+        print("FOLLOWING")
+        # print(f"ERROR: {self.controller.getPositionalError()}")
+        if (
+            self.controller.getPositionalError() < 0.02
+            and self.drivetrain.getVelocity() < 0.5
+            and self.command.isFinished()
+        ):
+            # We're done
             print("FINISH")
             self.next_state("finish")
+        elif self.controller.getPositionalError() > 0.5:
+            # Strayed too far, recalculate the path
+            self.next_state("generate")
 
     @state()
     def finish(self, initial_call: bool):
         if initial_call:
             self.command.end(False)
+            self.command = None
 
     @override
     def execute(self) -> None:
-        if self.command:
+        if self.command and not self.command.isFinished():
             self.command.execute()
         return super().execute()
 
