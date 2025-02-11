@@ -70,38 +70,57 @@ class SwerveDrive:
         self.backLeftLocation = wpimath.geometry.Translation2d(-0.381, 0.381)
         self.backRightLocation = wpimath.geometry.Translation2d(-0.381, -0.381)
 
-        self.frontLeft = SwerveModule(
-            constants.CANIds.SWERVE_DRIVE_FL,
-            constants.CANIds.SWERVE_ROTATE_FL,
-            constants.CANIds.SWERVE_CANCODER_FL,
-            1,
-            rotation_zero=193,
-            inverted=False,
-        )
-        self.frontRight = SwerveModule(
-            constants.CANIds.SWERVE_DRIVE_FR,
-            constants.CANIds.SWERVE_ROTATE_FR,
-            constants.CANIds.SWERVE_CANCODER_FR,
-            2,
-            rotation_zero=76,
-            inverted=False,
-        )
-        self.backLeft = SwerveModule(
-            constants.CANIds.SWERVE_DRIVE_RL,
-            constants.CANIds.SWERVE_ROTATE_RL,
-            constants.CANIds.SWERVE_CANCODER_RL,
-            3,
-            rotation_zero=216,
-            inverted=False,
-        )
-        self.backRight = SwerveModule(
-            constants.CANIds.SWERVE_DRIVE_RR,
-            constants.CANIds.SWERVE_ROTATE_RR,
-            constants.CANIds.SWERVE_CANCODER_RR,
-            4,
-            rotation_zero=318,
-            inverted=False,
-        )
+        if False:
+            self.frontLeft = SwerveModule(
+                constants.CANIds.SWERVE_DRIVE_FL,
+                constants.CANIds.SWERVE_ROTATE_FL,
+                constants.CANIds.SWERVE_CANCODER_FL,
+                1,
+                rotation_zero=193,
+                inverted=False,
+            )
+            self.frontRight = SwerveModule(
+                constants.CANIds.SWERVE_DRIVE_FR,
+                constants.CANIds.SWERVE_ROTATE_FR,
+                constants.CANIds.SWERVE_CANCODER_FR,
+                2,
+                rotation_zero=76,
+                inverted=False,
+            )
+            self.backLeft = SwerveModule(
+                constants.CANIds.SWERVE_DRIVE_RL,
+                constants.CANIds.SWERVE_ROTATE_RL,
+                constants.CANIds.SWERVE_CANCODER_RL,
+                3,
+                rotation_zero=216,
+                inverted=False,
+            )
+            self.backRight = SwerveModule(
+                constants.CANIds.SWERVE_DRIVE_RR,
+                constants.CANIds.SWERVE_ROTATE_RR,
+                constants.CANIds.SWERVE_CANCODER_RR,
+                4,
+                rotation_zero=318,
+                inverted=False,
+            )
+        else:
+            class MockSwerveModule():
+                def __init__(self):
+                    self.state = wpimath.kinematics.SwerveModuleState()
+                def getPosition(self) -> wpimath.kinematics.SwerveModulePosition:
+                    return wpimath.kinematics.SwerveModulePosition()
+                def setDesiredState(self, state:SwerveModuleState):
+                    self.state = state
+                def getState(self) ->wpimath.kinematics.SwerveModuleState:
+                    return self.state
+                def log(self):
+                    return
+                def simulationPeriodic(self):
+                    return
+            self.frontLeft = MockSwerveModule()
+            self.frontRight = MockSwerveModule()
+            self.backLeft = MockSwerveModule()
+            self.backRight = MockSwerveModule()
 
         self.kinematics = wpimath.kinematics.SwerveDrive4Kinematics(
             self.frontLeftLocation,
