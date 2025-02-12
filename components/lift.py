@@ -1,23 +1,28 @@
 
 import math
 import wpilib
+import wpimath.trajectory
+import wpimath.units
 import constants
 import rev
 from magicbot import tunable, will_reset_to, StateMachine, feedback
 from magicbot.state_machine import state, timed_state
+import wpimath.controller
+
 
 class Lift:
-    max_speed = tunable(1)
+    max_speed = tunable(0.2)
     target_speed = tunable(0.1) # TODO ajustement
+    gamepad_pilote: wpilib.XboxController
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
     hauteurDeplacement = tunable(0)
-    hauteurLeve11 = tunable(2500) 
-    hauteurLeve12 = tunable(5000)
-    hauteurLeve13 = tunable(7500)
-    hauteurIntake = tunable(1000)
-    hauteurMargeErreur = tunable(100)
+    hauteurLeve11 = tunable(wpimath.units.feetToMeters(2.500)) 
+    hauteurLeve12 = tunable(wpimath.units.feetToMeters(5.000))
+    hauteurLeve13 = tunable(wpimath.units.feetToMeters(7.500))
+    hauteurIntake = tunable(wpimath.units.feetToMeters(1.000))
+    hauteurMargeErreur = tunable(0.01)
 
     # hauteur cible
     hauteurCible = 0 # TODO quelque chose d'intelligent ici
@@ -30,6 +35,11 @@ class Lift:
         self.lift_motor_main = rev.SparkMax(constants.CANIds.LIFT_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless)
         self.lift_motor_follow = rev.SparkMax(constants.CANIds.LIFT_MOTOR_FOLLOW, rev.SparkMax.MotorType.kBrushless)
 
+        # self.liftPIDController = wpimath.controller.PIDController(1, 0, 0)
+        constraints = wpimath.trajectory.TrapezoidProfile.Constraints(0.2, 0.1)
+        self.liftPIDController = wpimath.controller.ProfiledPIDController(1, 0, 0, constraints)
+        
+
         sparkConfig = rev.SparkBaseConfig()
         sparkConfig.follow(constants.CANIds.LIFT_MOTOR_MAIN, False)
         self.lift_motor_follow.configure(sparkConfig, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
@@ -40,8 +50,9 @@ class Lift:
         # self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
 
         self.string_encoder = wpilib.Encoder(constants.DigitalIO.LIFT_STRING_ENCODER_1, constants.DigitalIO.LIFT_STRING_ENCODER_2)
-        self.string_encoder.setDistancePerPulse(1)
+        self.string_encoder.setDistancePerPulse(1/6340)
         self.string_encoder.setReverseDirection(True)
+        self.string_encoder.reset()
 
         # self.lift_motor = wpilib.PWMMotorController("DemoMotor", constants.PWM_DEMOMOTOR)
 
@@ -83,26 +94,39 @@ class Lift:
     def get_hauteur_cible(self) -> float:
         return self.hauteurCible
 
-    @feedback
-    def get_direction_mult_factor(self) -> int:
-        delta = self.hauteurCible - self.get_distance() 
-        if math.fabs(delta) < self.hauteurMargeErreur:
-            return 0
-        elif delta > 0:
-            return 1
-        elif delta < 0:
-            return -1
-        assert(False)
-        return 0
-
     def execute(self):
         """
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
-        distance : float = self.get_distance()
-        direction : bool = self.get_direction()
-        # print(f"distance:{distance} direction:{direction}")
-        dirFacteur = self.get_direction_mult_factor()
-        self.lift_motor_main.set(max(min(dirFacteur * self.target_speed, self.max_speed), -self.max_speed))
-        self.lift_motor_follow.set(max(min(dirFacteur * self.target_speed, self.max_speed), -self.max_speed))
+        currentHeight = self.string_encoder.getDistance()
+        targetHeight = self.hauteurCible
+
+        liftOutput = self.liftPIDController.calculate(
+            targetHeight, currentHeight 
+        )
+
+        if (not self.safety_limitswitch_1_and_2.get() or self.gamepad_pilote.getLeftBumperButton()) and liftOutput < 0:
+            print(f"SAFETY {self.safety_limitswitch_1_and_2.get()}:{self.gamepad_pilote.getLeftBumperButton()}")
+            targetHeight = currentHeight
+            self.liftPIDController.reset(currentHeight)
+            liftOutput = self.liftPIDController.calculate(
+                targetHeight, currentHeight 
+            )
+
+        if not self.zero_limitswitch_1_and_2.get() or self.gamepad_pilote.getRightBumperButton():
+            print(f"ZERO {self.zero_limitswitch_1_and_2.get()}:{self.gamepad_pilote.getRightBumperButton()}")
+            self.string_encoder.reset()
+            currentHeight = 0
+            targetHeight = 0
+            self.liftPIDController.reset(currentHeight)
+            liftOutput = self.liftPIDController.calculate(
+                targetHeight, currentHeight 
+            )
+
+
+        self.lift_motor_main.set(liftOutput)
+        self.lift_motor_follow.set(liftOutput)
+
+
+
