@@ -16,7 +16,6 @@ class AnalogIO(IntEnum):
     BEAM_SENSOR = 0
     PIXY_OFFSET = 1
 
-
     INTAKE_BEAM_SENSOR = 3
 
 
@@ -34,6 +33,7 @@ class DigitalIO(IntEnum):
 
     LIFT_STRING_ENCODER_1 = 8
     LIFT_STRING_ENCODER_2 = 7
+
 
 class CANIds(IntEnum):
     """Définition des ID CAN"""
@@ -61,8 +61,8 @@ class CANIds(IntEnum):
     CLIMB_RAISE_MOTOR_MAIN = 41
     CLIMB_RAISE_MOTOR_FOLLOWER = 42
 
-    INTAKE_INTAKE_MOTOR = 50
-    INTAKE_OUTPUT_MOTOR = 51
+    INTAKE_INTAKE_MOTOR = 33
+    INTAKE_OUTPUT_MOTOR = 34
 
 
 class SolenoidChannel(IntEnum):

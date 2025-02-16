@@ -1,36 +1,42 @@
-
-import wpilib
-import constants
 import rev
-from magicbot import tunable, will_reset_to, StateMachine, feedback
+import wpilib
+from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
+
+import constants
 
 
 class Intake:
     max_speed = tunable(1)
-    beam_analog_threshold = tunable(245) # TODO rajouter pull-up 5V
+    beam_analog_threshold = tunable(245)  # TODO rajouter pull-up 5V
     __target_intake_speed = will_reset_to(0)
     __target_output_speed = will_reset_to(0)
-    intake_motor: rev.SparkMax
-    output_motor: rev.SparkMax
-
 
     def setup(self):
         """
         Appelé après l'injection
         """
+        # Intake
+        self.intake_motor = rev.SparkMax(
+            constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless
+        )
+
+        self.output_motor = rev.SparkMax(
+            constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless
+        )
+
         self.beam_sensor = wpilib.AnalogInput(constants.AnalogIO.INTAKE_BEAM_SENSOR)
 
     def set_intake_speed(self, speed):
         """
-        Fait tourner le moteur à la vitesse spécifiée 
+        Fait tourner le moteur à la vitesse spécifiée
         """
         # S'assure que la vitesse maximale ne peut pas être dépassée
         self.__target_intake_speed = speed
 
     def set_output_speed(self, speed):
         """
-        Fait tourner le moteur à la vitesse spécifiée 
+        Fait tourner le moteur à la vitesse spécifiée
         """
         # S'assure que la vitesse maximale ne peut pas être dépassée
         self.__target_output_speed = speed
@@ -72,13 +78,17 @@ class Intake:
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
-        self.intake_motor.set(max(min(self.__target_intake_speed, self.max_speed), -self.max_speed))
-        self.output_motor.set(max(min(self.__target_output_speed, self.max_speed), -self.max_speed))
+        self.intake_motor.set(
+            max(min(self.__target_intake_speed, self.max_speed), -self.max_speed)
+        )
+        self.output_motor.set(
+            max(min(self.__target_output_speed, self.max_speed), -self.max_speed)
+        )
 
 
 class ActionIntakeEntree(StateMachine):
     intake: Intake
-    VITESSE_MOTEUR : float = 0.25
+    VITESSE_MOTEUR: float = 0.25
 
     @state(first=True)
     def intakeEntree(self):
@@ -89,7 +99,7 @@ class ActionIntakeEntree(StateMachine):
             self.next_state("finish")
         else:
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
-            self.intake.set_output_speed(-(self.VITESSE_MOTEUR/4))
+            self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
 
     @state
     def finish(self):
@@ -99,7 +109,7 @@ class ActionIntakeEntree(StateMachine):
 
 class ActionIntakeSortie(StateMachine):
     intake: Intake
-    VITESSE_MOTEUR : float = 0.25
+    VITESSE_MOTEUR: float = 0.25
     active: bool = True
 
     @state(first=True)
@@ -110,7 +120,6 @@ class ActionIntakeSortie(StateMachine):
         self.intake.set_output_speed(self.VITESSE_MOTEUR)
         if not self.intake.piece_chargee():
             self.next_state("intakeFinirSortie")
-
 
     @timed_state(duration=0.5, next_state="intakeFinish")
     def intakeFinirSortie(self):

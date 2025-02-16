@@ -8,8 +8,6 @@ from wpimath import controller
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
-from components.intake import Intake
-from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.swervedrive import SwerveDrive

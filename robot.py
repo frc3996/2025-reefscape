@@ -33,9 +33,11 @@ from autonomous.trajectory_follower import TrajectoryFollower
 from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
+from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
+from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
@@ -69,6 +71,7 @@ class MyRobot(MagicRobot):
     ##### HIGH Level components first (components that use components) #####
     actionStow: ActionStow
     actionIntake: ActionIntake
+    actionClimb: ActionClimb
     actionPathTester: ActionPathTester
     action_intake_entree: ActionIntakeEntree
     action_intake_sortie: ActionIntakeSortie
@@ -103,15 +106,13 @@ class MyRobot(MagicRobot):
     limelight_vision: LimeLightVision
 
     # Pneumatic Hub
-    # pneumatic_hub: wpilib.PneumaticHub
+    pneumaticHub: wpilib.PneumaticHub
 
     # Lift
-    # lift: Lift
+    lift: Lift
 
     # climb
-    # climb: Climb
-
-    # pneumatic_hub: wpilib.PneumaticHub
+    climb: Climb
 
     # intake
     intake: Intake
@@ -156,18 +157,10 @@ class MyRobot(MagicRobot):
         # )
 
         # Pneumatic Hub
-        # self.pneumatic_hub = wpilib.PneumaticHub()
+        self.pneumaticHub = wpilib.PneumaticHub()
 
-        # Pneumatic Hub
-        # pneumatic_hub = wpilib.PneumaticHub()
-
-        # Intake
-        self.intake_intake_motor = rev.SparkMax(
-            constants.CANIds.INTAKE_INTAKE_MOTOR, rev.SparkMax.MotorType.kBrushless
-        )
-        self.intake_output_motor = rev.SparkMax(
-            constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless
-        )
+        # Climb
+        # self.climb = Climb()
 
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
@@ -221,7 +214,29 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
+        # self.teleopDrive()
+        # self.teleopLift()
+        self.teleopClimb()
 
+    def teleopClimb(self):
+        if self.gamepad_pilote.getAButton():
+            self.actionClimb.engage()
+        elif self.gamepad_pilote.getAButtonReleased():
+            self.actionClimb.done()
+
+    def teleopLift(self):
+        if self.gamepad_pilote.getAButton():
+            self.lift.go_intake()
+        elif self.gamepad_pilote.getXButton():
+            self.lift.go_level1()
+        elif self.gamepad_pilote.getYButton():
+            self.lift.go_level2()
+        elif self.gamepad_pilote.getBButton():
+            self.lift.go_level3()
+        else:
+            self.lift.go_deplacement()
+
+    def teleopDrive(self):
         leftY = gamepad_helper.apply_deadzone(
             self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
         )
@@ -233,10 +248,6 @@ class MyRobot(MagicRobot):
             0.2,
             # self.rightXFilter.calculate(self.gamepad_pilote.getRightX(2)), 0.2
         )
-
-        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
-        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
-        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
         if self.gamepad_pilote.getAButton():
             # self.actionTrajectoryFollower.engage()
@@ -255,5 +266,9 @@ class MyRobot(MagicRobot):
             # self.actionMaxVelocity.engage()
             self.actionMaxAccel.engage()
             return
+
+        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
+        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
