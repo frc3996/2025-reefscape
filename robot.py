@@ -215,13 +215,13 @@ class MyRobot(MagicRobot):
     @override
     def teleopPeriodic(self) -> None:
         # self.teleopDrive()
-        # self.teleopLift()
+        self.teleopLift()
         self.teleopClimb()
 
     def teleopClimb(self):
-        if self.gamepad_pilote.getAButton():
+        if self.gamepad_pilote.getRightBumperButton():
             self.actionClimb.engage()
-        elif self.gamepad_pilote.getAButtonReleased():
+        elif self.gamepad_pilote.getRightBumperButtonReleased():
             self.actionClimb.done()
 
     def teleopLift(self):

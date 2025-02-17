@@ -13,6 +13,7 @@ Presented by
 HAAS
 """
 
+import math
 from threading import ExceptHookArgs
 from typing import override
 
@@ -20,6 +21,7 @@ import rev
 import wpilib
 import wpimath.controller
 import wpimath.trajectory
+import wpimath.units
 from magicbot import StateMachine, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 
@@ -37,79 +39,79 @@ import constants
 class Climb:
     pneumaticHub: wpilib.PneumaticHub
 
-    def __init__(self):
-        self.kGuideMaxSpeed: float = 3750
-        self.kGuideMaxAccel: float = 2000
-        self.kGuideSpeed: float = 3500
+    kGuideMaxSpeed: float = tunable(3750.0)
+    kGuideMaxAccel: float = tunable(2000.0)
+    kGuideSpeed: float = tunable(3500.0)
 
-        self.kClimbMaxSpeed: float = 3750
-        self.kClimbMaxAccel: float = 2000
-        self.kClimbDistance: float = 10
+    kClimbMaxSpeed: float = tunable(10)
+    kClimbMaxAccel: float = tunable(10)
+    kClimbDistance: float = tunable(10)
+
+    def __init__(self):
+
+        # V = RPM * 60 * (C / GR)
+        self.kRpmToVelocity: float = 60 * (
+            (wpimath.units.inchesToMeters(3.25) * 2 * math.pi) / (125)
+        )
 
         self._climbDistance: float = 0
         self._guideSpeed: float = 0
 
     def setup(self) -> None:
-        # Declare a Pneumatic Hub or PCM
-        # self.pneumaticHub = wpilib.PneumaticHub()
-
         self.guideMotor: rev.SparkMax = rev.SparkMax(
             constants.CANIds.CLIMB_GUIDE_MOTOR, rev.SparkMax.MotorType.kBrushless
         )
         self.guideEncoder: rev.SparkRelativeEncoder = self.guideMotor.getEncoder()
         self.guidePID: wpimath.controller.ProfiledPIDController = (
             wpimath.controller.ProfiledPIDController(
-                1,
+                2,
                 0,
                 0,
                 wpimath.trajectory.TrapezoidProfile.Constraints(
-                    # self.kGuideMaxSpeed, self.kGuideMaxAccel
-                    1,
-                    0.5,
+                    self.kGuideMaxSpeed, self.kGuideMaxAccel
                 ),
             )
         )
 
-        self.climbMaster: rev.SparkMax = rev.SparkMax(
+        # Climb hardware
+        self.climbMain: rev.SparkMax = rev.SparkMax(
             constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, rev.SparkMax.MotorType.kBrushless
         )
-        self.climbEncoder: rev.SparkRelativeEncoder = self.climbMaster.getEncoder()
 
-        # Climb motors
-        self.climbSlave: rev.SparkMax = rev.SparkMax(
+        # Set position conversion factor, revolution to distance
+        climbMainConfig = rev.SparkBaseConfig()
+
+        _ = climbMainConfig.encoder.positionConversionFactor(self.kRpmToVelocity)
+        _ = climbMainConfig.encoder.velocityConversionFactor(self.kRpmToVelocity)
+        _ = self.climbMain.configure(
+            climbMainConfig,
+            rev.SparkMax.ResetMode.kResetSafeParameters,
+            rev.SparkMax.PersistMode.kPersistParameters,
+        )
+        self.climbEncoder: rev.SparkRelativeEncoder = self.climbMain.getEncoder()
+
+        # Make it into a follower
+        self.climbFollower: rev.SparkMax = rev.SparkMax(
             constants.CANIds.CLIMB_RAISE_MOTOR_FOLLOWER,
             rev.SparkMax.MotorType.kBrushless,
+        )
+        climbSlaveConfig = rev.SparkBaseConfig()
+        _ = climbSlaveConfig.follow(constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, False)
+        _ = self.climbFollower.configure(
+            climbSlaveConfig,
+            rev.SparkMax.ResetMode.kResetSafeParameters,
+            rev.SparkMax.PersistMode.kPersistParameters,
         )
 
         self.climbPID: wpimath.controller.ProfiledPIDController = (
             wpimath.controller.ProfiledPIDController(
-                1,
+                3,
                 0,
                 0,
                 wpimath.trajectory.TrapezoidProfile.Constraints(
-                    # self.kClimbMaxSpeed, self.kClimbMaxAccel
-                    1,
-                    0.5,
+                    self.kClimbMaxSpeed, self.kClimbMaxAccel
                 ),
             )
-        )
-
-        # Set position conversion factor, revolution to distance
-        # climbMasterConfig = rev.SparkBaseConfig()
-        # _ = climbMasterConfig.encoder.positionConversionFactor(1)
-        # _ = self.climbMaster.configure(
-        #     climbMasterConfig,
-        #     rev.SparkMax.ResetMode.kResetSafeParameters,
-        #     rev.SparkMax.PersistMode.kPersistParameters,
-        # )
-
-        # Make it into a follower
-        climbSlaveConfig = rev.SparkBaseConfig()
-        _ = climbSlaveConfig.follow(constants.CANIds.CLIMB_RAISE_MOTOR_MAIN, False)
-        _ = self.climbSlave.configure(
-            climbSlaveConfig,
-            rev.SparkMax.ResetMode.kResetSafeParameters,
-            rev.SparkMax.PersistMode.kPersistParameters,
         )
 
         # Limit switches
@@ -142,7 +144,7 @@ class Climb:
         # Start at zero
         self.climbEncoder.setPosition(0)
         self._climbDistance = self.kClimbDistance
-        self.climbPID.reset(0)
+        self.climbPID.reset(self.climbEncoder.getPosition())
 
     def climbDown(self):
         self._climbDistance = 0
@@ -170,20 +172,20 @@ class Climb:
             self.climbEncoder.getPosition(), self._climbDistance
         )
 
-        self.climbMaster.set(min(max(climbOutput, -1), 1))
-        print(f"climbOutput {self.climbMaster.get()}")
+        self.climbMain.set(min(max(climbOutput / self.kClimbMaxSpeed, -1), 1))
+        # print(f"climbOutput {self.climbMain.get()}")
 
         # Velocity PID for guide
         if self._guideSpeed == 0:
             # Just deactivate
             self.guideMotor.set(0)
-            self.climbPID.reset(0)
+            # self.climbPID.reset(0)
         else:
             guideOutput = self.guidePID.calculate(
                 self.guideEncoder.getVelocity(), self._guideSpeed
             )
-            self.guideMotor.set(min(max(guideOutput, -1), 1))
-        print(f"guideOutput {self.guideMotor.get()}")
+            self.guideMotor.set(min(max(guideOutput / self.kGuideMaxSpeed, -1), 1))
+        # print(f"guideOutput {self.guideMotor.get()}")
 
 
 class ActionClimb(StateMachine):

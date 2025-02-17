@@ -14,7 +14,9 @@ import constants
 
 
 class Lift:
-    max_speed = tunable(8)
+    kMaxSpeed = tunable(15)
+    kMaxAccel = tunable(15)
+
     gamepad_pilote: wpilib.XboxController
 
     # TODO ajuster les valeurs
@@ -43,10 +45,12 @@ class Lift:
 
         self.liftPIDController: wpimath.controller.ProfiledPIDController = (
             wpimath.controller.ProfiledPIDController(
-                1,
+                10,
                 0,
                 0,
-                wpimath.trajectory.TrapezoidProfile.Constraints(self.max_speed, 15),
+                wpimath.trajectory.TrapezoidProfile.Constraints(
+                    self.kMaxSpeed, self.kMaxAccel
+                ),
             )
         )
 
@@ -74,11 +78,6 @@ class Lift:
         self.stringEncoder.setDistancePerPulse(1 / 6340)
         self.stringEncoder.setReverseDirection(True)
         self.stringEncoder.reset()
-
-        # Simulation
-        self.stringEncoderSim: wpilib.simulation.EncoderSim = (
-            wpilib.simulation.EncoderSim(self.stringEncoder)
-        )
 
     def go_intake(self):
         self.__aller_a_hauteur(self.hauteurIntake)
@@ -139,14 +138,4 @@ class Lift:
 
         liftOutput = self.liftPIDController.calculate(currentHeight, targetHeight)
 
-        # Should be configured as follower
-        self.liftMaster.set(liftOutput)
-        # XXX: Not necessary as follower
-        # self.liftSlave.set(liftOutput)
-
-    def simulationPeriodic(self):
-        currentHeight = self.stringEncoder.getDistance()
-
-        rate = self.liftMaster.get()
-        self.stringEncoderSim.setRate(rate)
-        self.stringEncoderSim.setDistance(currentHeight + rate * 0.02)
+        self.liftMaster.set(liftOutput / self.kMaxSpeed)

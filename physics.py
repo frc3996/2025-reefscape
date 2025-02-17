@@ -71,10 +71,23 @@ class LiftMechanism:
             wpilib.Color8Bit(255, 0, 0),  # Small horizontal ligament as a box
         )
 
+        # Simulation
+        self.stringEncoderSim: wpilib.simulation.EncoderSim = (
+            wpilib.simulation.EncoderSim(self.robot.lift.stringEncoder)
+        )
+
         # Put Mechanism to SmartDashboard
         wpilib.SmartDashboard.putData("Elevator Sim", self.mech2d)
 
     def simulationPeriodic(self):
+        rate = self.robot.lift.liftMaster.get()
+        self.stringEncoderSim.setRate(
+            self.stringEncoderSim.getRate() + rate * self.robot.lift.kMaxSpeed
+        )
+        self.stringEncoderSim.setDistance(
+            self.robot.lift.stringEncoder.getDistance() + rate * 0.02
+        )
+
         self.elevatorMech2d.setLength(self.robot.lift.get_distance())
 
 
@@ -109,7 +122,7 @@ class ClimbMechanism:
         self.cage_in_1_limitswitch.setValue(False)
         self.cage_in_2_limitswitch.setValue(False)
 
-        self.climbEncoder = rev.SparkRelativeEncoderSim(self.robot.climb.climbMaster)
+        self.climbEncoder = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
         self.guideEncoder = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
 
         # Create a Mechanism2d display of an elevator
@@ -168,6 +181,8 @@ class ClimbMechanism:
         q_left = q_bottom.appendLigament("q_left", 5, 90, 5)
         self.q = [q_root, q_top, q_right, q_bottom, q_left]
 
+        self._angle: float = 0
+
         # Put Mechanism to SmartDashboard
         wpilib.SmartDashboard.putData("Climb Sim", self.mech2d)
 
@@ -176,12 +191,12 @@ class ClimbMechanism:
         # green is clockwise, red is counterclockwise, blue is idle
         rate = self.robot.climb.guideMotor.get()
         _ = self.guideEncoder.setVelocity(
-            self.guideEncoder.getVelocity() * 0.95 + rate * 300
+            self.guideEncoder.getVelocity() * 0.95
+            + rate * self.robot.climb.kGuideMaxSpeed
         )
         _ = self.guideEncoder.setPosition(
             self.guideEncoder.getPosition() + self.guideEncoder.getVelocity() * 0.02
         )
-
         if rate == 0:
             applyColor(BLUE, self.o1)
             applyColor(BLUE, self.o2)
@@ -192,9 +207,9 @@ class ClimbMechanism:
             applyColor(GREEN, self.o1)
             applyColor(GREEN, self.o2)
 
-        print(
-            f"guide: {self.guideEncoder.getVelocity()} >= {self.robot.climb._guideSpeed}"
-        )
+        # print(
+        #     f"guide: {self.guideEncoder.getVelocity()} >= {self.robot.climb._guideSpeed}"
+        # )
         if self.guideEncoder.getVelocity() > self.robot.climb._guideSpeed:
             self.cage_in_1_limitswitch.setValue(True)
             self.cage_in_2_limitswitch.setValue(True)
@@ -206,26 +221,31 @@ class ClimbMechanism:
 
         # Piston
         if self.robot.climb._solenoid.get():
-            self.piston_out_1_limitswitch.setValue(True)
-            self.piston_out_2_limitswitch.setValue(True)
+            if self._angle < 45:
+                self._angle += 1
+            else:
+                self.piston_out_1_limitswitch.setValue(True)
+                self.piston_out_2_limitswitch.setValue(True)
         else:
-            self.piston_out_1_limitswitch.setValue(False)
-            self.piston_out_2_limitswitch.setValue(False)
+            if self._angle > 0:
+                self._angle -= 1
+            else:
+                self.piston_out_1_limitswitch.setValue(False)
+                self.piston_out_2_limitswitch.setValue(False)
+        self.p[1].setAngle(90 - self._angle)
+        self.q[1].setAngle(90 + self._angle)
 
         # Grab the cage
         engaged = self.robot.climb.isCageSqueezed()
-        if engaged:
-            self.p[1].setAngle(45)
-            self.q[1].setAngle(135)
-        else:
-            self.p[1].setAngle(90)
-            self.q[1].setAngle(90)
         applyColor(RED if engaged > 0 else GREEN, self.p)
         applyColor(RED if engaged > 0 else GREEN, self.q)
 
         #### Climb motor
-        rate = self.robot.climb.climbMaster.get()
-        _ = self.climbEncoder.setVelocity(self.climbEncoder.getVelocity() + rate * 300)
+        rate = self.robot.climb.climbMain.get()
+        _ = self.climbEncoder.setVelocity(
+            self.climbEncoder.getVelocity() * 0.95
+            + rate * self.robot.climb.kClimbMaxSpeed
+        )
         _ = self.climbEncoder.setPosition(
             self.climbEncoder.getPosition() + self.climbEncoder.getVelocity() * 0.02
         )
@@ -239,10 +259,10 @@ class ClimbMechanism:
             applyColor(GREEN, self.o3)
             applyColor(GREEN, self.o4)
 
-        print(
-            f"climb: {self.climbEncoder.getPosition()} >= {self.robot.climb._climbDistance}"
-        )
-        self.l[1].setLength(5 + self.climbEncoder.getPosition() / 600)
+        # print(
+        #     f"climb: {self.climbEncoder.getPosition()} to {self.robot.climb._climbDistance}"
+        # )
+        self.l[1].setLength(5 + self.climbEncoder.getPosition())
 
 
 class PhysicsEngine:
@@ -276,7 +296,6 @@ class PhysicsEngine:
 
         # Call the components periodic
         self.robot.drivetrain.simulationPeriodic()
-        self.robot.lift.simulationPeriodic()
         self.liftMechanism.simulationPeriodic()
         self.climbMechanism.simulationPeriodic()
 
