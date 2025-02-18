@@ -40,7 +40,6 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-from components.robot_actions import ActionIntake, ActionPathTester, ActionStow
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -69,18 +68,10 @@ class MyRobot(MagicRobot):
     runAuto: RunAuto
 
     ##### HIGH Level components first (components that use components) #####
-    actionStow: ActionStow
-    actionIntake: ActionIntake
     actionClimb: ActionClimb
-    actionPathTester: ActionPathTester
-    action_intake_entree: ActionIntakeEntree
-    action_intake_sortie: ActionIntakeSortie
+    actionIntakeEntree: ActionIntakeEntree
+    actionIntakeSortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
-    # actionPathTester: ActionPathTester
-    # actionIntakeEntree: IntakeEntreeSortieAction
-    # actionTrajectoryFollower: TrajectoryFollower
-    # actionTrajectoryFollowerV2: TrajectoryFollowerV2
-    # actionPathPlanner: ActionPathPlanner
     actionPathPlannerV3: ActionPathPlannerV3
 
     ## SysId
@@ -169,38 +160,36 @@ class MyRobot(MagicRobot):
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
-        # TODO Effacer si inutile
-        # Update position dans Smart Dashboard
-        self.field = wpilib.Field2d()
-        wpilib.SmartDashboard.putData(self.field)
-
+    @override
     def disabledInit(self) -> None:
         pass
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
 
+    @override
     def disabledPeriodic(self):
         """Mets à jours le dashboard, même quand le robot est désactivé"""
         # self.limelight_vision.execute(()
         pass
 
+    @override
     def autonomousInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
-        self.actionStow.done()
         # self.limelight_vision.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
         pass
 
+    @override
     def autonomous(self):
         """Pour les modes auto de MagicBot, voir le dossier ./autonomous"""
         super().autonomous()
 
+    @override
     def teleopInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
         self.pdp.clearStickyFaults()
         # self.limelight_vision.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
-        self.actionStow.engage()
 
     @override
     def robotPeriodic(self) -> None:
@@ -215,8 +204,17 @@ class MyRobot(MagicRobot):
     @override
     def teleopPeriodic(self) -> None:
         # self.teleopDrive()
-        self.teleopLift()
-        self.teleopClimb()
+        # self.teleopLift()
+        # self.teleopClimb()
+        self.teleopIntake()
+
+    def teleopIntake(self):
+        if self.gamepad_pilote.getAButton():
+            self.actionIntakeEntree.engage()
+        if self.gamepad_pilote.getBButton():
+            self.actionIntakeSortie.engage()
+        else:
+            self.actionClimb.done()
 
     def teleopClimb(self):
         if self.gamepad_pilote.getRightBumperButton():
@@ -226,6 +224,7 @@ class MyRobot(MagicRobot):
 
     def teleopLift(self):
         if self.gamepad_pilote.getAButton():
+            print("Go level1")
             self.lift.go_intake()
         elif self.gamepad_pilote.getXButton():
             self.lift.go_level1()

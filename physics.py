@@ -5,6 +5,7 @@ import wpilib
 import wpilib.simulation
 from pyfrc.physics.core import PhysicsInterface
 from wpimath.geometry import Pose2d
+from wpimath.system.plant import DCMotor
 
 import constants
 
@@ -47,9 +48,116 @@ PURPLE = wpilib.Color8Bit(128, 0, 128)
 BROWN = wpilib.Color8Bit(139, 69, 19)
 
 
-class LiftMechanism:
+class IntakeSimulator:
     def __init__(self, robot: "MyRobot"):
-        self.robot = robot
+        self.robot: "MyRobot" = robot
+
+        # Hardware SIM
+        self.beamSensorSim: wpilib.simulation.AnalogInputSim = (
+            wpilib.simulation.AnalogInputSim(self.robot.intake.beam_sensor)
+        )
+        self.intakeMotorSim = rev.SparkMaxSim(
+            self.robot.intake.intake_motor, DCMotor.NEO()
+        )
+        self.outputMotorSim = rev.SparkMaxSim(
+            self.robot.intake.output_motor, DCMotor.NEO()
+        )
+
+        # Create Mechanism2d displays
+        self.mech2d = wpilib.Mechanism2d(6, 3)
+        self.root = self.mech2d.getRoot("Root", 1, 1)
+
+        # Intake motor
+        o1_root = self.mech2d.getRoot("o1_root", 1, 1)
+        o1_left = o1_root.appendLigament("o1_top", 1, 90, 5)
+        o1_top = o1_left.appendLigament("o1_right", 1, -90, 5)
+        o1_right = o1_top.appendLigament("o1_bottom", 1, -90, 5)
+        o1_bottom = o1_right.appendLigament("o1_left", 1, -90, 5)
+        self.o1 = [o1_root, o1_left, o1_top, o1_right, o1_bottom]
+
+        # Beam
+        l1_root = self.mech2d.getRoot("l1_root", 3, 1)
+        l1_left = l1_root.appendLigament("l1_left", 1, 90, 5)
+        self.l = [l1_root, l1_left]
+
+        # Outout motor
+        o2_root = self.mech2d.getRoot("o2_root", 4, 1)
+        o2_left = o2_root.appendLigament("o2_top", 1, 90, 5)
+        o2_top = o2_left.appendLigament("o2_right", 1, -90, 5)
+        o2_right = o2_top.appendLigament("o2_bottom", 1, -90, 5)
+        o2_bottom = o2_right.appendLigament("o2_left", 1, -90, 5)
+        self.o2 = [o2_root, o2_left, o2_top, o2_right, o2_bottom]
+
+        # Timer
+        self._intake_timer: float = 0
+        self._output_timer: float = 0
+        self.beamSensorSim.setVoltage(4)
+
+        # Put Mechanism to SmartDashboard
+        wpilib.SmartDashboard.putData("Intake System Sim", self.mech2d)
+
+    def simulationPeriodic(self):
+        # Update motor visual representation based on speed
+        intake_speed = self.robot.intake.intake_motor.get()
+        output_speed = self.robot.intake.output_motor.get()
+
+        applyColor(
+            wpilib.Color8Bit(
+                abs(int(intake_speed * 1024)) if intake_speed < 0 else 0,
+                abs(int(intake_speed * 1024)) if intake_speed > 0 else 0,
+                255 if intake_speed == 0 else 0,
+            ),
+            self.o1,
+        )
+        # Some guilty knowledge of the statemachine
+        if intake_speed > 0 and output_speed < 0:
+            self._intake_timer += 0.02
+        else:
+            self._intake_timer = 0
+        if self._intake_timer > 2:
+            self.beamSensorSim.setVoltage(0.1)
+
+        # Output
+        applyColor(
+            wpilib.Color8Bit(
+                abs(int(output_speed * 1024)) if output_speed < 0 else 0,
+                abs(int(output_speed * 1024)) if output_speed > 0 else 0,
+                255 if intake_speed == 0 else 0,
+            ),
+            self.o2,
+        )
+        if intake_speed > 0 and output_speed > 0:
+            self._output_timer += 0.02
+        else:
+            self._output_timer = 0
+        if self._output_timer > 0.4:
+            self.beamSensorSim.setVoltage(4)
+
+        # Change beam sensor color if triggered
+        if self.robot.intake.piece_chargee():
+            applyColor(wpilib.Color8Bit(255, 0, 0), self.l)
+        else:
+            applyColor(wpilib.Color8Bit(0, 255, 0), self.l)
+
+
+class LiftSimulator:
+    def __init__(self, robot: "MyRobot"):
+        self.robot: "MyRobot" = robot
+
+        # Sim hardware
+        self.limitswitchZeroSim = wpilib.simulation.DIOSim(
+            self.robot.lift.limitswitchZero
+        )
+        self.limitswitchSafetySwitch = wpilib.simulation.DIOSim(
+            self.robot.lift.limitswitchSafety
+        )
+        self.stringEncoderSim: wpilib.simulation.EncoderSim = (
+            wpilib.simulation.EncoderSim(self.robot.lift.stringEncoder)
+        )
+
+        # Initial state for limitswitches
+        self.limitswitchZeroSim.setValue(False)
+        self.limitswitchSafetySwitch.setValue(False)
 
         # Create a Mechanism2d display of an elevator
         self.mech2d = wpilib.Mechanism2d(1, 3.0)
@@ -69,11 +177,6 @@ class LiftMechanism:
             0,
             60,
             wpilib.Color8Bit(255, 0, 0),  # Small horizontal ligament as a box
-        )
-
-        # Simulation
-        self.stringEncoderSim: wpilib.simulation.EncoderSim = (
-            wpilib.simulation.EncoderSim(self.robot.lift.stringEncoder)
         )
 
         # Put Mechanism to SmartDashboard
@@ -100,30 +203,32 @@ def applyColor(
             l.setColor(color)
 
 
-class ClimbMechanism:
+class ClimbSimulator:
     def __init__(self, robot: "MyRobot"):
         self.robot: "MyRobot" = robot
 
-        self.piston_out_1_limitswitch = wpilib.simulation.DIOSim(
+        # Sim hardware
+        self.limitswitchPiston1Sim = wpilib.simulation.DIOSim(
             self.robot.climb.piston_out_limitswitch_1
         )
-        self.piston_out_2_limitswitch = wpilib.simulation.DIOSim(
+        self.limitswitchPiston2Sim = wpilib.simulation.DIOSim(
             self.robot.climb.piston_out_limitswitch_2
         )
-        self.piston_out_1_limitswitch.setValue(False)
-        self.piston_out_2_limitswitch.setValue(False)
-
-        self.cage_in_1_limitswitch = wpilib.simulation.DIOSim(
+        self.limitswitchCage1Sim = wpilib.simulation.DIOSim(
             self.robot.climb.cage_in_limitswitch_1
         )
-        self.cage_in_2_limitswitch = wpilib.simulation.DIOSim(
+        self.limitswitchCage2Sim = wpilib.simulation.DIOSim(
             self.robot.climb.cage_in_limitswitch_2
         )
-        self.cage_in_1_limitswitch.setValue(False)
-        self.cage_in_2_limitswitch.setValue(False)
 
-        self.climbEncoder = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
-        self.guideEncoder = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
+        self.climbEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
+        self.guideEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
+
+        # Initial states for limitswitch
+        self.limitswitchPiston1Sim.setValue(False)
+        self.limitswitchPiston2Sim.setValue(False)
+        self.limitswitchCage1Sim.setValue(False)
+        self.limitswitchCage2Sim.setValue(False)
 
         # Create a Mechanism2d display of an elevator
         self.mech2d = wpilib.Mechanism2d(50.0, 50.0)
@@ -190,12 +295,13 @@ class ClimbMechanism:
         #### Guide motor
         # green is clockwise, red is counterclockwise, blue is idle
         rate = self.robot.climb.guideMotor.get()
-        _ = self.guideEncoder.setVelocity(
-            self.guideEncoder.getVelocity() * 0.95
+        _ = self.guideEncoderSim.setVelocity(
+            self.guideEncoderSim.getVelocity() * 0.95
             + rate * self.robot.climb.kGuideMaxSpeed
         )
-        _ = self.guideEncoder.setPosition(
-            self.guideEncoder.getPosition() + self.guideEncoder.getVelocity() * 0.02
+        _ = self.guideEncoderSim.setPosition(
+            self.guideEncoderSim.getPosition()
+            + self.guideEncoderSim.getVelocity() * 0.02
         )
         if rate == 0:
             applyColor(BLUE, self.o1)
@@ -207,16 +313,13 @@ class ClimbMechanism:
             applyColor(GREEN, self.o1)
             applyColor(GREEN, self.o2)
 
-        # print(
-        #     f"guide: {self.guideEncoder.getVelocity()} >= {self.robot.climb._guideSpeed}"
-        # )
-        if self.guideEncoder.getVelocity() > self.robot.climb._guideSpeed:
-            self.cage_in_1_limitswitch.setValue(True)
-            self.cage_in_2_limitswitch.setValue(True)
+        if self.guideEncoderSim.getVelocity() > self.robot.climb._guideSpeed:
+            self.limitswitchCage1Sim.setValue(True)
+            self.limitswitchCage2Sim.setValue(True)
             assert self.robot.climb.isCageIn()
-        elif self.guideEncoder.getVelocity() < 0.01:
-            self.cage_in_1_limitswitch.setValue(False)
-            self.cage_in_2_limitswitch.setValue(False)
+        elif self.guideEncoderSim.getVelocity() < 0.01:
+            self.limitswitchCage1Sim.setValue(False)
+            self.limitswitchCage2Sim.setValue(False)
             assert not self.robot.climb.isCageIn()
 
         # Piston
@@ -224,14 +327,14 @@ class ClimbMechanism:
             if self._angle < 45:
                 self._angle += 1
             else:
-                self.piston_out_1_limitswitch.setValue(True)
-                self.piston_out_2_limitswitch.setValue(True)
+                self.limitswitchPiston1Sim.setValue(True)
+                self.limitswitchPiston2Sim.setValue(True)
         else:
             if self._angle > 0:
                 self._angle -= 1
             else:
-                self.piston_out_1_limitswitch.setValue(False)
-                self.piston_out_2_limitswitch.setValue(False)
+                self.limitswitchPiston1Sim.setValue(False)
+                self.limitswitchPiston2Sim.setValue(False)
         self.p[1].setAngle(90 - self._angle)
         self.q[1].setAngle(90 + self._angle)
 
@@ -242,12 +345,13 @@ class ClimbMechanism:
 
         #### Climb motor
         rate = self.robot.climb.climbMain.get()
-        _ = self.climbEncoder.setVelocity(
-            self.climbEncoder.getVelocity() * 0.95
+        _ = self.climbEncoderSim.setVelocity(
+            self.climbEncoderSim.getVelocity() * 0.95
             + rate * self.robot.climb.kClimbMaxSpeed
         )
-        _ = self.climbEncoder.setPosition(
-            self.climbEncoder.getPosition() + self.climbEncoder.getVelocity() * 0.02
+        _ = self.climbEncoderSim.setPosition(
+            self.climbEncoderSim.getPosition()
+            + self.climbEncoderSim.getVelocity() * 0.02
         )
         if rate == 0:
             applyColor(BLUE, self.o3)
@@ -259,10 +363,7 @@ class ClimbMechanism:
             applyColor(GREEN, self.o3)
             applyColor(GREEN, self.o4)
 
-        # print(
-        #     f"climb: {self.climbEncoder.getPosition()} to {self.robot.climb._climbDistance}"
-        # )
-        self.l[1].setLength(5 + self.climbEncoder.getPosition())
+        self.l[1].setLength(5 + self.climbEncoderSim.getPosition())
 
 
 class PhysicsEngine:
@@ -273,12 +374,14 @@ class PhysicsEngine:
         :param robot: your robot object
         """
         self.robot = robot
+
         self.navx = wpilib.simulation.SimDeviceSim("navX-Sensor[2]")
         self.navx_yaw = self.navx.getDouble("Yaw")
         self.navx_rate = self.navx.getDouble("Rate")
 
-        self.liftMechanism: LiftMechanism = LiftMechanism(robot)
-        self.climbMechanism: ClimbMechanism = ClimbMechanism(robot)
+        self.liftSimulator: LiftSimulator = LiftSimulator(robot)
+        self.climbSimulator: ClimbSimulator = ClimbSimulator(robot)
+        self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         """
@@ -296,8 +399,9 @@ class PhysicsEngine:
 
         # Call the components periodic
         self.robot.drivetrain.simulationPeriodic()
-        self.liftMechanism.simulationPeriodic()
-        self.climbMechanism.simulationPeriodic()
+        self.liftSimulator.simulationPeriodic()
+        self.climbSimulator.simulationPeriodic()
+        self.intakeSimulator.simulationPeriodic()
 
         # NavX
         self.navx_yaw.set(-self.robot.drivetrain.getPose().rotation().degrees())

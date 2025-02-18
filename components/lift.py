@@ -120,15 +120,14 @@ class Lift:
         currentHeight = self.stringEncoder.getDistance()
         targetHeight = self.hauteurCible
 
-        if (
-            not self.limitswitchSafety.get()
-            or self.gamepad_pilote.getLeftBumperButton()
-        ) and targetHeight > currentHeight:
+        if self.limitswitchSafety.get() and targetHeight > currentHeight:
+            print(f"safety {self.limitswitchSafety.get()}")
             # Stop movement
             targetHeight = currentHeight
             self.liftPIDController.reset(currentHeight)
 
-        if not self.limitswitchZero.get() or self.gamepad_pilote.getRightBumperButton():
+        if self.limitswitchZero.get():
+            print(f"zero {self.limitswitchZero.get()}")
             # Reset encoder at zero
             self.stringEncoder.reset()
             currentHeight = 0
