@@ -7,8 +7,7 @@ Un NAVX est nécessaire, car le positionnement est absolue (field centric).
 Le zéro est fait au démarrage du robot, donc il est important de bien le positionner.
 Presser le bouton A va également refaire son zéro.
 
-SWERVES (FALCONS x4)
-LIME LIGHT
+SWERVES (FALCONS x4) LIME LIGHT
 
 
 """
@@ -40,7 +39,7 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-from components.rikistick import Rikistick
+from components.rikistick import RikiStick
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -101,7 +100,7 @@ class MyRobot(MagicRobot):
     pneumaticHub: wpilib.PneumaticHub
 
     # Rikistick
-    rikistick: Rikistick
+    rikiStick: RikiStick
 
     # Lift
     lift: Lift
