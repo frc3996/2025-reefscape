@@ -40,6 +40,7 @@ from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.rikistick import RikiStick
+from components.robot_actions import ActionCycle
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -66,6 +67,7 @@ class MyRobot(MagicRobot):
 
     ##### Auto mode #####
     runAuto: RunAuto
+    actionCycle: ActionCycle
 
     ##### HIGH Level components first (components that use components) #####
     actionClimb: ActionClimb
@@ -206,10 +208,34 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        self.teleopDrive()
-        self.teleopLift()
-        self.teleopClimb()
-        self.teleopIntake()
+        # self.teleopDrive()
+        # self.teleopLift()
+        # self.teleopClimb()
+        # self.teleopIntake()
+        self.teleopCycle()
+
+    def teleopCycle(self):
+        leftY = gamepad_helper.apply_deadzone(
+            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
+        )
+        leftX = gamepad_helper.apply_deadzone(
+            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.2
+        )
+        rightX = gamepad_helper.apply_deadzone(
+            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(2)),
+            0.2,
+        )
+
+        if self.gamepad_pilote.getAButton():
+            self.actionCycle.engage()
+        elif self.gamepad_pilote.getAButtonReleased():
+            self.actionCycle.done()
+
+        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
+        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
+
+        self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
     def teleopIntake(self):
         if self.gamepad_pilote.getAButton():

@@ -1,3 +1,4 @@
+from dataclasses import field
 from typing import override
 
 import wpilib
@@ -5,9 +6,12 @@ from magicbot import StateMachine, state, timed_state, tunable
 from magicbot.state_machine import StateRef
 from wpimath import controller
 
+from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
+from components.field import FieldLayout
+from components.intake import Intake
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.swervedrive import SwerveDrive
@@ -159,3 +163,51 @@ class ActionPathTester(StateMachine):
     @override
     def done(self):
         super().done()
+
+
+class ActionCycle(StateMachine):
+    intake: Intake
+    actionPathPlannerV3: ActionPathPlannerV3
+    field_layout: FieldLayout
+
+    @state(first=True)
+    def start(self):
+        print("ActionCycle: START")
+        if self.intake.has_object():
+            self.next_state("move_reef")
+        else:
+            self.next_state("move_coral")
+
+    @state
+    def move_reef(self):
+        print("ActionCycle: MOVE_REEF")
+        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        self.next_state("wait_move_reef")
+
+    @state
+    def wait_move_reef(self):
+        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        if not self.actionPathPlannerV3.is_executing:
+            self.next_state("engage_deposit")
+
+    @state
+    def engage_deposit(self):
+        print("ActionCycle: engage_deposit")
+        self.next_state("move_coral")
+
+    @state
+    def move_coral(self):
+        print("ActionCycle: move_coral")
+        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        self.next_state("wait_move_coral")
+
+    @state
+    def wait_move_coral(self):
+        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        if not self.actionPathPlannerV3.is_executing:
+            self.next_state("engage_intake")
+
+    @state
+    def engage_intake(self):
+        print("ActionCycle: engage_intake")
+        self.next_state("move_coral")

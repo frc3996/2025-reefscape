@@ -1,4 +1,5 @@
 import math
+from tokenize import generate_tokens
 from typing import Optional, override
 
 import wpilib
@@ -24,10 +25,12 @@ from wpimath.units import degreesToRadians
 
 import robot
 from components import swervedrive
+from components.field import FieldLayout
 
 
 class ActionPathPlannerV3(StateMachine):
     drivetrain: swervedrive.SwerveDrive
+    field_layout: FieldLayout
 
     class SwerveSubsystem(Subsystem):
         pass
@@ -94,8 +97,16 @@ class ActionPathPlannerV3(StateMachine):
             pos.rotation(),
         )
 
+    def move(self, end: Pose2d) -> None:
+        if end != self.end:
+            self.end = end
+            return self.engage("generate", True)
+        else:
+            return super().engage()
+
     @state(first=True)
     def initial(self):
+        print("ActionPathPlannerV3: initial")
         if self.command:
             self.command.end(True)
             self.command = None
@@ -107,7 +118,9 @@ class ActionPathPlannerV3(StateMachine):
         # Since we are using a holonomic drivetrain, the rotation component of
         # this pose represents the goal holonomic rotation
         self.start = self.getPose()
-        self.end = Pose2d(2, 2, Rotation2d(math.pi / 2))
+        self.end = self.field_layout.getReefPosition()
+        self.goalEndState: GoalEndState = GoalEndState(0.0, self.end.rotation())
+        # self.end = Pose2d(2, 2, Rotation2d(math.pi / 2))
 
         # If X and Y are exact, lets just perform rotation
         if self.start.X() == self.end.X() and self.start.Y() == self.end.Y():
@@ -173,22 +186,22 @@ class ActionPathPlannerV3(StateMachine):
         print("FOLLOWING")
         # print(f"ERROR: {self.controller.getPositionalError()}")
         if (
-            self.controller.getPositionalError() < 0.02
+            self.controller.getPositionalError() <= 0.3
             and self.drivetrain.getVelocity() < 0.5
             and self.command.isFinished()
         ):
             # We're done
             print("FINISH")
             self.next_state("finish")
-        elif self.controller.getPositionalError() > 0.5:
+        elif self.controller.getPositionalError() > 1:
             # Strayed too far, recalculate the path
             self.next_state("generate")
 
     @state()
-    def finish(self, initial_call: bool):
-        if initial_call:
-            self.command.end(False)
-            self.command = None
+    def finish(self):
+        self.command.end(False)
+        self.command = None
+        self.done()
 
     @override
     def execute(self) -> None:
