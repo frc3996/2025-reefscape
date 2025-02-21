@@ -40,6 +40,7 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
+from components.rikistick import Rikistick
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -98,6 +99,9 @@ class MyRobot(MagicRobot):
 
     # Pneumatic Hub
     pneumaticHub: wpilib.PneumaticHub
+
+    # Rikistick
+    rikistick: Rikistick
 
     # Lift
     lift: Lift
@@ -203,9 +207,9 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        # self.teleopDrive()
-        # self.teleopLift()
-        # self.teleopClimb()
+        self.teleopDrive()
+        self.teleopLift()
+        self.teleopClimb()
         self.teleopIntake()
 
     def teleopIntake(self):
@@ -217,14 +221,13 @@ class MyRobot(MagicRobot):
             self.actionClimb.done()
 
     def teleopClimb(self):
-        if self.gamepad_pilote.getRightBumperButton():
+        if self.gamepad_pilote.getAButton():
             self.actionClimb.engage()
-        elif self.gamepad_pilote.getRightBumperButtonReleased():
+        elif self.gamepad_pilote.getAButtonReleased():
             self.actionClimb.done()
 
     def teleopLift(self):
         if self.gamepad_pilote.getAButton():
-            print("Go level1")
             self.lift.go_intake()
         elif self.gamepad_pilote.getXButton():
             self.lift.go_level1()

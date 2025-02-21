@@ -44,6 +44,26 @@ from phoenix6.sim.talon_fx_sim_state import rotation
 import common.gamepad_helper as tools
 
 
+class MockSwerveModule:
+    def __init__(self):
+        self.state = wpimath.kinematics.SwerveModuleState()
+
+    def getPosition(self) -> wpimath.kinematics.SwerveModulePosition:
+        return wpimath.kinematics.SwerveModulePosition()
+
+    def setDesiredState(self, state: wpimath.kinematics.SwerveModuleState):
+        self.state = state
+
+    def getState(self) -> wpimath.kinematics.SwerveModuleState:
+        return self.state
+
+    def log(self):
+        return
+
+    def simulationPeriodic(self):
+        return
+
+
 def drive_talonfx_set_config(talonfx: phoenix6.hardware.TalonFX):
     _ = talonfx.get_position().set_update_frequency(10)
     _ = talonfx.optimize_bus_utilization()

@@ -36,6 +36,12 @@ class ActionPathPlannerV3(StateMachine):
         super().__init__()
         self.command: FollowPathCommand | None = None
 
+        self.start: Pose2d = Pose2d(0, 0, 0)
+        self.end = Pose2d(0, 0, 0)
+
+        # Always finish a path at the right rotation and speed of 0
+        self.goalEndState: GoalEndState = GoalEndState(0.0, self.end.rotation())
+
     def setup(self):
         # Do all subsystem initialization here ...
 
@@ -100,14 +106,20 @@ class ActionPathPlannerV3(StateMachine):
         print("RECALCULATING")
         # Since we are using a holonomic drivetrain, the rotation component of
         # this pose represents the goal holonomic rotation
-        start: Pose2d = self.getPose()
-        end = Pose2d(2, 2, Rotation2d(math.pi / 2))
-        self.goalEndState: GoalEndState = GoalEndState(0.0, end.rotation())
-        Pathfinding.setStartPosition(start.translation())
-        Pathfinding.setGoalPosition(end.translation())
+        self.start = self.getPose()
+        self.end = Pose2d(2, 2, Rotation2d(math.pi / 2))
+
+        # If X and Y are exact, lets just perform rotation
+        if self.start.X() == self.end.X() and self.start.Y() == self.end.Y():
+            print("Already at position")
+            self.next_state("direct")
+
+        Pathfinding.setStartPosition(self.start.translation())
+        Pathfinding.setGoalPosition(self.end.translation())
 
         self.next_state("wait_for_path")
 
+    # @state
     @timed_state(duration=1, next_state="direct")
     def wait_for_path(self):
         print("WAITING")
@@ -122,18 +134,17 @@ class ActionPathPlannerV3(StateMachine):
     @state()
     def direct(self):
         print("DIRECT PATH")
-        end = Pose2d(2, 2, Rotation2d(math.pi / 2))
         self.currentPath = PathPlannerPath.fromPathPoints(
             [
                 PathPoint(
-                    end.translation(),
-                    RotationTarget(0, end.rotation()),
+                    self.end.translation(),
+                    RotationTarget(0, self.end.rotation()),
                     self.constraints,
                     0.01,
                 )
             ],
             self.constraints,
-            GoalEndState(0.0, end.rotation()),
+            self.goalEndState,
         )
         self.next_state("follow")
 
@@ -151,7 +162,10 @@ class ActionPathPlannerV3(StateMachine):
             self.subsystem,
         )
 
-        self.command.initialize()
+        try:
+            self.command.initialize()
+        except:
+            self.command = None
         self.next_state("exec")
 
     @state()
@@ -190,6 +204,33 @@ class ActionPathPlannerV3(StateMachine):
             self.command = None
         return super().done()
 
+
+# class Drive(Subsystem):
+#     def __init__(self):
+#         super().__init__()
+#
+#         # Other subsystem initialization code
+#         # ...
+#
+#         self.x_controller = PIDController(10.0, 0.0, 0.0)
+#         self.y_controller = PIDController(10.0, 0.0, 0.0)
+#         self.heading_controller = PIDController(7.5, 0.0, 0.0)
+#
+#         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
+#
+#     def follow_trajectory(self, sample):
+#         # Get the current pose of the robot
+#         pose = self.get_pose()
+#
+#         # Generate the next speeds for the robot
+#         speeds = ChassisSpeeds(
+#             sample.vx + self.x_controller.calculate(pose.X(), sample.x),
+#             sample.vy + self.y_controller.calculate(pose.Y(), sample.y),
+#             sample.omega + self.heading_controller.calculate(pose.rotation().radians(), sample.heading)
+#         )
+#
+#         # Apply the generated speeds
+#         self.drive_field_relative(speeds)
 
 #
 # # Load the path we want to pathfind to and follow
