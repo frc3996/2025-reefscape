@@ -2,7 +2,7 @@ import rev
 import wpilib
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
-
+from components.chariot import Chariot
 import constants
 
 
@@ -89,6 +89,7 @@ class Intake:
 class ActionIntakeEntree(StateMachine):
     intake: Intake
     VITESSE_MOTEUR: float = 0.25
+    chariot: Chariot
 
     @state(first=True)
     def intakeEntree(self):
@@ -98,6 +99,7 @@ class ActionIntakeEntree(StateMachine):
             self.intake.set_output_speed(0)
             self.next_state("finish")
         else:
+            self.chariot.move_intake_back_for_intake()
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
             self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
 

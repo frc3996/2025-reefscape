@@ -23,6 +23,7 @@ from magicbot import MagicRobot
 from navx import AHRS
 from wpimath.filter import SlewRateLimiter
 
+from components.chariot import Chariot
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
@@ -109,6 +110,9 @@ class MyRobot(MagicRobot):
 
     # climb
     climb: Climb
+
+    # Chariot
+    chariot: Chariot
 
     # intake
     intake: Intake
