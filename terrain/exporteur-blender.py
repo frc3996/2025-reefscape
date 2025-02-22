@@ -10,7 +10,7 @@ def Vec2List(v) -> List[float]:
 def Quat2List(q) -> List[float]:
     return [q.x, q.y, q.z, q.w]
 
-prefixesInteressants = ["g_", "d_"]
+prefixesInteressants = ["b_", "r_"]
 
 objets = [] # liste de dictionnaires
 for obj in bpy.data.objects:

@@ -179,3 +179,4 @@ tests/ctre_sim/*.dat
 
 # Blender files
 *.blend
+*.blend1
