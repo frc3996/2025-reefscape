@@ -65,19 +65,16 @@ class RikiStick:
             if self._cagePosition == CagePositionKeys.LEFT:
                 self._cagePosition = CagePositionKeys.NONE
             else:
-                print("CAGE1")
                 self._cagePosition = CagePositionKeys.LEFT
         if self.rikistick1.getRawButtonPressed(15):
             if self._cagePosition == CagePositionKeys.MIDDLE:
                 self._cagePosition = CagePositionKeys.NONE
             else:
-                print("CAGE2")
                 self._cagePosition = CagePositionKeys.MIDDLE
         if self.rikistick1.getRawButtonPressed(16):
             if self._cagePosition == CagePositionKeys.RIGHT:
                 self._cagePosition = CagePositionKeys.NONE
             else:
-                print("CAGE3")
                 self._cagePosition = CagePositionKeys.RIGHT
 
     def execute_sim(self):
