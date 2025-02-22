@@ -1,31 +1,22 @@
-import math
-from tokenize import generate_tokens
-from typing import Optional, override
+from typing import override
 
 import wpilib
 import wpimath.units
 from commands2 import Subsystem
-from hal import initialize
 from magicbot import timed_state
-from magicbot.state_machine import StateMachine, StateRef, state
-from pathplannerlib.auto import AutoBuilder, FollowPathCommand
-from pathplannerlib.commands import PathfindingCommand
+from magicbot.state_machine import StateMachine, state
+from pathplannerlib.auto import FollowPathCommand
 from pathplannerlib.config import (DCMotor, ModuleConfig, PIDConstants,
                                    RobotConfig, Translation2d)
 from pathplannerlib.controller import PPHolonomicDriveController
-from pathplannerlib.path import (GoalEndState, IdealStartingState,
-                                 PathConstraints, PathPlannerPath,
-                                 PathPlannerTrajectory, PathPoint,
-                                 RotationTarget)
+from pathplannerlib.path import GoalEndState, PathConstraints, PathPlannerPath
 from pathplannerlib.pathfinding import Pathfinding
-from wpilib import DriverStation
-from wpimath._controls._controls import controller
-from wpimath.geometry import Pose2d, Rotation2d
-from wpimath.units import degreesToRadians
+from pathplannerlib.trajectory import PathPlannerTrajectoryState
+from wpimath.geometry import Pose2d
 
-import robot
 from components import swervedrive
 from components.field import FieldLayout
+from components.reefscape import FIELD_LENGTH, FIELD_WIDTH
 
 
 class ActionPathPlannerV3(StateMachine):
@@ -40,7 +31,7 @@ class ActionPathPlannerV3(StateMachine):
         self.command: FollowPathCommand | None = None
 
         self.start: Pose2d = Pose2d(0, 0, 0)
-        self.end = Pose2d(0, 0, 0)
+        self.end: Pose2d = Pose2d(0, 0, 0)
 
         # Always finish a path at the right rotation and speed of 0
         self.goalEndState: GoalEndState = GoalEndState(0.0, self.end.rotation())
@@ -79,8 +70,8 @@ class ActionPathPlannerV3(StateMachine):
         )
 
         self.controller: PPHolonomicDriveController = PPHolonomicDriveController(
-            PIDConstants(7.0, 0.0, 0.0),  # Translation PID constants
-            PIDConstants(7.0, 0.0, 0.0),  # Rotation PID constants
+            PIDConstants(2.0, 0.0, 0.0),  # Translation PID constants
+            PIDConstants(2.0, 0.0, 0.0),  # Rotation PID constants
         )
 
         self.subsystem: Subsystem = self.SwerveSubsystem()
@@ -92,12 +83,15 @@ class ActionPathPlannerV3(StateMachine):
         # Prevent the return of a negative value. It breaks pathplanner
         pos = self.drivetrain.getPose()
         return Pose2d(
-            max(min(pos.X(), 17), 0),
-            max(min(pos.Y(), 7.6), 0),
+            max(min(pos.X(), FIELD_LENGTH), 0),
+            max(min(pos.Y(), FIELD_WIDTH), 0),
             pos.rotation(),
         )
 
     def move(self, end: Pose2d) -> None:
+        """
+        Is this really the best way??
+        """
         if end != self.end:
             self.end = end
             return self.engage("generate", True)
@@ -114,26 +108,44 @@ class ActionPathPlannerV3(StateMachine):
 
     @state()
     def generate(self):
-        print("RECALCULATING")
+        print("GENERATE")
         # Since we are using a holonomic drivetrain, the rotation component of
         # this pose represents the goal holonomic rotation
         self.start = self.getPose()
-        self.end = self.field_layout.getReefPosition()
-        self.goalEndState: GoalEndState = GoalEndState(0.0, self.end.rotation())
-        # self.end = Pose2d(2, 2, Rotation2d(math.pi / 2))
+        self.goalEndState = GoalEndState(0.0, self.end.rotation())
 
         # If X and Y are exact, lets just perform rotation
-        if self.start.X() == self.end.X() and self.start.Y() == self.end.Y():
-            print("Already at position")
+        if (
+            abs(self.start.X() - self.end.X()) < 0.30
+            and abs(self.start.Y() - self.end.Y()) < 0.30
+        ):
+            self.next_state("finish")
+            return
+        elif (
+            abs(self.start.X() - self.end.X()) < 0.30
+            and abs(self.start.Y() - self.end.Y()) < 0.30
+        ):
             self.next_state("direct")
+            return
 
         Pathfinding.setStartPosition(self.start.translation())
         Pathfinding.setGoalPosition(self.end.translation())
 
         self.next_state("wait_for_path")
 
-    # @state
-    @timed_state(duration=1, next_state="direct")
+    @state
+    def direct(self):
+        print("DIRECT")
+        trajectory = PathPlannerTrajectoryState(
+            0, self.drivetrain.getChassisSpeeds(), self.end
+        )
+        chassisSpeeds = self.controller.calculateRobotRelativeSpeeds(
+            self.getPose(), trajectory
+        )
+        self.drivetrain.drive_auto(chassisSpeeds)
+        self.next_state("generate")
+
+    @timed_state(duration=2, next_state="generate")
     def wait_for_path(self):
         print("WAITING")
         if Pathfinding.isNewPathAvailable():
@@ -142,28 +154,10 @@ class ActionPathPlannerV3(StateMachine):
             )
 
             if self.currentPath is not None:
-                self.next_state("follow")
+                self.next_state("initialize")
 
-    @state()
-    def direct(self):
-        print("DIRECT PATH")
-        self.currentPath = PathPlannerPath.fromPathPoints(
-            [
-                PathPoint(
-                    self.end.translation(),
-                    RotationTarget(0, self.end.rotation()),
-                    self.constraints,
-                    0.01,
-                )
-            ],
-            self.constraints,
-            self.goalEndState,
-        )
-        self.next_state("follow")
-
-    @state()
-    def follow(self):
-        print("START")
+    @state
+    def initialize(self):
         self.command: FollowPathCommand = FollowPathCommand(
             self.currentPath,
             self.getPose,
@@ -177,45 +171,42 @@ class ActionPathPlannerV3(StateMachine):
 
         try:
             self.command.initialize()
+            self.next_state("follow")
         except:
             self.command = None
-        self.next_state("exec")
+            self.next_state("generate")
 
     @state()
-    def exec(self):
-        print("FOLLOWING")
-        # print(f"ERROR: {self.controller.getPositionalError()}")
-        if (
-            self.controller.getPositionalError() <= 0.3
-            and self.drivetrain.getVelocity() < 0.5
-            and self.command.isFinished()
-        ):
-            # We're done
-            print("FINISH")
-            self.next_state("finish")
-        elif self.controller.getPositionalError() > 1:
+    def follow(self):
+        print("FOLLOW")
+        if self.controller.getPositionalError() > 1:
             # Strayed too far, recalculate the path
+            self.next_state("generate")
+        elif self.command.isFinished():
+            # Subcommand is done, lets make sure we're at destination
             self.next_state("generate")
 
     @state()
     def finish(self):
-        self.command.end(False)
-        self.command = None
+        print("FINISH")
+        if self.command:
+            self.command.end(False)
+            self.command = None
         self.done()
+
+    @override
+    def done(self) -> None:
+        if self.is_executing and self.command:
+            print("DONE")
+            self.command.end(True)
+            self.command = None
+        return super().done()
 
     @override
     def execute(self) -> None:
         if self.command and not self.command.isFinished():
             self.command.execute()
         return super().execute()
-
-    @override
-    def done(self) -> None:
-        if self.is_executing and self.command:
-            print("CANCELING")
-            self.command.end(True)
-            self.command = None
-        return super().done()
 
 
 # class Drive(Subsystem):

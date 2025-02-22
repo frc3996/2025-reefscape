@@ -67,10 +67,15 @@ class FieldLayout(AprilTagFieldLayout):
             raise Exception("Pick a side")
 
     def getCoralStation(self) -> Pose2d:
-        position: Position = REEFSCAPE[self.getSide()]["coral"][
-            self.rikiStick.coralStation
-        ][self.rikiStick.reefPosition]
-        return position_to_pose2d(position)
+        positions: list[Pose2d] = list(
+            [
+                position_to_pose2d(x)
+                for x in REEFSCAPE[self.getSide()]["coral"][
+                    self.rikiStick.coralStation
+                ].values()
+            ]
+        )
+        return find_closest_pose(self.drivetrain.getPose(), positions)
 
     def getReefPosition(self) -> Pose2d:
         position: Position = REEFSCAPE[self.getSide()]["reef"][

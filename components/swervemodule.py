@@ -24,7 +24,6 @@
 import math
 from typing import final
 
-import ntcore
 import phoenix6
 import phoenix6.sim
 import wpilib
@@ -35,18 +34,16 @@ import wpimath.geometry
 import wpimath.kinematics
 import wpimath.trajectory
 import wpimath.units
-from magicbot import tunable
 from phoenix6.configs import (CANcoderConfiguration, MagnetSensorConfigs,
                               MotorOutputConfigs, TalonFXConfiguration)
 from phoenix6.configs.config_groups import InvertedValue
-from phoenix6.sim.talon_fx_sim_state import rotation
-
-import common.gamepad_helper as tools
 
 
 class MockSwerveModule:
     def __init__(self):
-        self.state = wpimath.kinematics.SwerveModuleState()
+        self.state: wpimath.kinematics.SwerveModuleState = (
+            wpimath.kinematics.SwerveModuleState()
+        )
 
     def getPosition(self) -> wpimath.kinematics.SwerveModulePosition:
         return wpimath.kinematics.SwerveModulePosition()
@@ -138,7 +135,7 @@ def encoder_set_config(encoder: phoenix6.hardware.CANcoder, rotation_zero: float
 
 class DriveEncoder:
     # Diameter is 4in, C = PI * D
-    kWheelCircumference = math.pi * wpimath.units.inchesToMeters(4.0)
+    kWheelCircumference: float = math.pi * wpimath.units.inchesToMeters(4.0)
     # From spec
     kGearRatio: float = 6.12  # L1=8.14; L2=6.75; L3=6.12
 
@@ -171,13 +168,13 @@ class DriveEncoder:
 
     def setDistancePerPulse(self, dpp: float):
         # In simulation and on real hardware you might store this conversion factor if needed.
-        self.distancePerPulse = dpp
+        self.distancePerPulse: float = dpp
 
 
 class TurningEncoder:
     def __init__(self, moduleNumber: int, encoder: phoenix6.hardware.CANcoder):
         self.encoder: phoenix6.hardware.CANcoder = encoder
-        self.moduleNumber = moduleNumber
+        self.moduleNumber: int = moduleNumber
 
     def getRate(self) -> wpimath.units.radians_per_second:
         rotation_velocity = self.encoder.get_velocity().value * math.tau
@@ -190,7 +187,7 @@ class TurningEncoder:
         return rotation_distance
 
     def setDistancePerPulse(self, dpp: float):
-        self.distancePerPulse = dpp
+        self.distancePerPulse: float = dpp
 
 
 @final
@@ -264,7 +261,9 @@ class SwerveModule:
         )
 
     def setDesiredState(
-        self, desiredState: wpimath.kinematics.SwerveModuleState
+        self,
+        desiredState: wpimath.kinematics.SwerveModuleState,
+        _driveFeedforward: float | None = None,  # XXX Do something with this
     ) -> None:
         """Sets the desired state for the module."""
         self.desiredState = desiredState
@@ -283,7 +282,11 @@ class SwerveModule:
         driveOutput = self.drivePIDController.calculate(
             self.driveEncoder.getRate(), self.desiredState.speed
         )
-        driveFeedforward = self.driveFeedforward.calculate(self.desiredState.speed)
+
+        # if driveFeedforward is None:
+        driveFeedforward = self.driveFeedforward.calculate(
+            self.driveEncoder.getRate(), self.desiredState.speed
+        )
 
         # Calculate the turning motor output from the turning PID controller.
         turnOutput = self.turningPIDController.calculate(

@@ -27,16 +27,13 @@ import math
 from typing import final
 
 import ntcore
-import wpilib
-import wpilib.simulation
 import wpimath.estimator
 import wpimath.geometry
 import wpimath.kinematics
 import wpimath.units
-from magicbot import tunable, will_reset_to
-from pathplannerlib.commands import Pose2d
+from magicbot import will_reset_to
+from pathplannerlib.commands import DriveFeedforwards, Pose2d
 from pathplannerlib.trajectory import SwerveModuleState
-from phoenix6.sim import chassis_reference
 
 import constants
 from components.gyro import Gyro
@@ -65,6 +62,7 @@ class SwerveDrive:
     driverChassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
     # autoChassisSpeeds = will_reset_to(wpimath.kinematics.ChassisSpeeds())
     autoChassisSpeeds = wpimath.kinematics.ChassisSpeeds()
+    autoFeedforwards: DriveFeedforwards | None = None
 
     def setup(self) -> None:
         self.frontLeftLocation = wpimath.geometry.Translation2d(0.381, 0.381)
@@ -163,8 +161,10 @@ class SwerveDrive:
     def drive_auto(
         self,
         chassisSpeeds: wpimath.kinematics.ChassisSpeeds,
+        driveFeedforwards: DriveFeedforwards | None = None,
     ):
         self.autoChassisSpeeds = chassisSpeeds
+        self.autoFeedforwards = driveFeedforwards
 
     def drive(
         self,
@@ -246,10 +246,38 @@ class SwerveDrive:
                 ),
             )
 
-        self.frontLeft.setDesiredState(swerveModuleStates[0])
-        self.frontRight.setDesiredState(swerveModuleStates[1])
-        self.backLeft.setDesiredState(swerveModuleStates[2])
-        self.backRight.setDesiredState(swerveModuleStates[3])
+        self.frontLeft.setDesiredState(
+            swerveModuleStates[0],
+            (
+                self.autoFeedforwards.accelerationsMPS[0]
+                if self.autoFeedforwards
+                else None
+            ),
+        )
+        self.frontRight.setDesiredState(
+            swerveModuleStates[1],
+            (
+                self.autoFeedforwards.accelerationsMPS[1]
+                if self.autoFeedforwards
+                else None
+            ),
+        )
+        self.backLeft.setDesiredState(
+            swerveModuleStates[2],
+            (
+                self.autoFeedforwards.accelerationsMPS[2]
+                if self.autoFeedforwards
+                else None
+            ),
+        )
+        self.backRight.setDesiredState(
+            swerveModuleStates[3],
+            (
+                self.autoFeedforwards.accelerationsMPS[3]
+                if self.autoFeedforwards
+                else None
+            ),
+        )
 
         # LOG
         self.desiredSwerveModuleState = swerveModuleStates

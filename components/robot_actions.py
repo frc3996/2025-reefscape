@@ -113,6 +113,8 @@ class ActionPathTester(StateMachine):
 
 class ActionCycle(StateMachine):
     intake: Intake
+    actionIntakeEntree: ActionIntakeEntree
+    actionIntakeSortie: ActionIntakeSortie
     actionPathPlannerV3: ActionPathPlannerV3
     field_layout: FieldLayout
 
@@ -139,21 +141,36 @@ class ActionCycle(StateMachine):
     @state
     def engage_deposit(self):
         print("ActionCycle: engage_deposit")
-        self.next_state("move_coral")
+        self.actionIntakeSortie.execute()
+        self.next_state("wait_deposit")
+
+    @state
+    def wait_deposit(self):
+        self.actionIntakeSortie.execute()
+        if not self.actionIntakeSortie.is_executing:
+            self.next_state("move_coral")
 
     @state
     def move_coral(self):
         print("ActionCycle: move_coral")
-        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        self.actionPathPlannerV3.move(self.field_layout.getCoralStation())
         self.next_state("wait_move_coral")
 
     @state
     def wait_move_coral(self):
-        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
+        self.actionPathPlannerV3.move(self.field_layout.getCoralStation())
         if not self.actionPathPlannerV3.is_executing:
             self.next_state("engage_intake")
 
     @state
     def engage_intake(self):
         print("ActionCycle: engage_intake")
-        self.next_state("move_coral")
+        self.actionIntakeEntree.execute()
+        self.next_state("wait_intake")
+
+    @state
+    def wait_intake(self):
+        print("ActionCycle: engage_intake")
+        self.actionIntakeEntree.execute()
+        if not self.actionIntakeEntree.is_executing:
+            self.next_state("move_reef")
