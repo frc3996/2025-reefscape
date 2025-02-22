@@ -164,7 +164,7 @@ class LiftSimulator:
         self.elevatorRoot = self.mech2d.getRoot("Elevator Root", 0.5, 0)
         self.elevatorMech2d = self.elevatorRoot.appendLigament(
             "Elevator",
-            self.robot.lift.get_distance(),
+            self.robot.lift.get_lift_height(),
             90,
             30,
             wpilib.Color8Bit(255, 0, 0),
@@ -191,7 +191,7 @@ class LiftSimulator:
             self.robot.lift.stringEncoder.getDistance() + rate * 0.02
         )
 
-        self.elevatorMech2d.setLength(self.robot.lift.get_distance())
+        self.elevatorMech2d.setLength(self.robot.lift.get_lift_height())
 
 
 def applyColor(
@@ -214,12 +214,12 @@ class ClimbSimulator:
         self.limitswitchPiston2Sim = wpilib.simulation.DIOSim(
             self.robot.climb.piston_out_limitswitch_2
         )
-        self.limitswitchCage1Sim = wpilib.simulation.DIOSim(
-            self.robot.climb.cage_in_limitswitch_1
+        self.limitswitchCage1and2Sim = wpilib.simulation.DIOSim(
+            self.robot.climb.cage_in_limitswitch_1_and_2
         )
-        self.limitswitchCage2Sim = wpilib.simulation.DIOSim(
-            self.robot.climb.cage_in_limitswitch_2
-        )
+        # self.limitswitchCage2Sim = wpilib.simulation.DIOSim(
+        #     self.robot.climb.cage_in_limitswitch_2
+        # )
 
         self.climbEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
         self.guideEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
@@ -227,8 +227,8 @@ class ClimbSimulator:
         # Initial states for limitswitch
         self.limitswitchPiston1Sim.setValue(False)
         self.limitswitchPiston2Sim.setValue(False)
-        self.limitswitchCage1Sim.setValue(False)
-        self.limitswitchCage2Sim.setValue(False)
+        self.limitswitchCage1and2Sim.setValue(False)
+        # self.limitswitchCage2Sim.setValue(False)
 
         # Create a Mechanism2d display of an elevator
         self.mech2d = wpilib.Mechanism2d(50.0, 50.0)
@@ -314,12 +314,12 @@ class ClimbSimulator:
             applyColor(GREEN, self.o2)
 
         if self.guideEncoderSim.getVelocity() > self.robot.climb._guideSpeed:
-            self.limitswitchCage1Sim.setValue(True)
-            self.limitswitchCage2Sim.setValue(True)
+            self.limitswitchCage1and2Sim.setValue(True)
+            # self.limitswitchCage2Sim.setValue(True)
             assert self.robot.climb.isCageIn()
         elif self.guideEncoderSim.getVelocity() < 0.01:
-            self.limitswitchCage1Sim.setValue(False)
-            self.limitswitchCage2Sim.setValue(False)
+            self.limitswitchCage1and2Sim.setValue(False)
+            # self.limitswitchCage2Sim.setValue(False)
             assert not self.robot.climb.isCageIn()
 
         # Piston

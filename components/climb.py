@@ -115,12 +115,12 @@ class Climb:
         )
 
         # Limit switches
-        self.cage_in_limitswitch_1: wpilib.DigitalInput = wpilib.DigitalInput(
-            constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_1
+        self.cage_in_limitswitch_1_and_2: wpilib.DigitalInput = wpilib.DigitalInput(
+            constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_1_AND_2
         )
-        self.cage_in_limitswitch_2: wpilib.DigitalInput = wpilib.DigitalInput(
-            constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_2
-        )
+        # self.cage_in_limitswitch_2: wpilib.DigitalInput = wpilib.DigitalInput(
+        #     constants.DigitalIO.CLIMB_CAGE_IN_LIMITSWITCH_2
+        # )
         self.piston_out_limitswitch_1: wpilib.DigitalInput = wpilib.DigitalInput(
             constants.DigitalIO.CLIMB_PISTON_OUT_LIMITSWITCH_1
         )
@@ -150,7 +150,7 @@ class Climb:
         self._climbDistance = 0
 
     def isCageIn(self):
-        return self.cage_in_limitswitch_1.get() or self.cage_in_limitswitch_2.get()
+        return self.cage_in_limitswitch_1_and_2.get()  # or self.cage_in_limitswitch_2.get()
 
     def isCageSqueezed(self):
         return (

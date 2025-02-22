@@ -72,8 +72,8 @@ class Lift:
         # self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
 
         self.stringEncoder: wpilib.Encoder = wpilib.Encoder(
-            constants.DigitalIO.LIFT_STRING_ENCODER_1,
-            constants.DigitalIO.LIFT_STRING_ENCODER_2,
+            constants.DigitalIO.LIFT_STRING_ENCODER_A,
+            constants.DigitalIO.LIFT_STRING_ENCODER_B,
         )
         self.stringEncoder.setDistancePerPulse(1 / 6340)
         self.stringEncoder.setReverseDirection(True)
@@ -98,7 +98,7 @@ class Lift:
         self.hauteurCible = hauteur
 
     @feedback
-    def get_distance(self) -> float:
+    def get_lift_height(self) -> float:
         return self.stringEncoder.getDistance()
 
     @feedback
@@ -117,8 +117,8 @@ class Lift:
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
-        currentHeight = self.stringEncoder.getDistance()
-        targetHeight = self.hauteurCible
+        currentHeight = self.get_lift_height()
+        targetHeight = self.get_hauteur_cible()
 
         if self.limitswitchSafety.get() and targetHeight > currentHeight:
             print(f"safety {self.limitswitchSafety.get()}")
