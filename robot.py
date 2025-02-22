@@ -23,7 +23,6 @@ from magicbot import MagicRobot
 from navx import AHRS
 from wpimath.filter import SlewRateLimiter
 
-from components.chariot import Chariot
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
@@ -33,6 +32,7 @@ from autonomous.trajectory_follower import TrajectoryFollower
 from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
+from components.chariot import Chariot
 from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
 from components.gyro import Gyro
@@ -169,8 +169,7 @@ class MyRobot(MagicRobot):
 
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
-        self.gamepad_copilote = wpilib.XboxController(1)
-        # self.gamepad = wpilib.PS5Controller(0)
+
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
@@ -229,20 +228,55 @@ class MyRobot(MagicRobot):
 
     def teleopCycle(self):
         leftY = gamepad_helper.apply_deadzone(
-            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
+            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.1
         )
         leftX = gamepad_helper.apply_deadzone(
-            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.2
+            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.1
         )
         rightX = gamepad_helper.apply_deadzone(
-            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(2)),
-            0.2,
+            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(3)),
+            0.1,
         )
 
+        # Autonomous cycling
         if self.gamepad_pilote.getAButton():
             self.actionCycle.engage()
         elif self.gamepad_pilote.getAButtonReleased():
             self.actionCycle.done()
+
+        # Intake coral
+        if self.gamepad_pilote.getRawAxis(2) > 0.5:
+            self.actionIntakeEntree.engage()
+        elif self.actionIntakeEntree.is_executing:
+            self.actionIntakeEntree.done()
+
+        # Deposit coral
+        if self.gamepad_pilote.getRawAxis(5) > 0.5:
+            self.actionIntakeSortie.engage()
+        elif self.actionIntakeSortie.is_executing:
+            self.actionIntakeSortie.done()
+
+        # Coral level
+        if abs(self.gamepad_pilote.getPOV() - 0) < 5:
+            # LEVEL 4
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 270) < 5:
+            # LEVEL 3
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 90) < 5:
+            # LEVEL 2
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
+            # LEVEL 2
+            pass
+
+        # Climb
+        if self.gamepad_pilote.getLeftBumper():
+            # Climb deploy
+            pass
+        if self.gamepad_pilote.getRightBumper():
+            # Climb climb
+            pass
 
         xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
         ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed

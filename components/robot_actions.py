@@ -5,6 +5,7 @@ import wpilib
 from magicbot import StateMachine, state, timed_state, tunable
 from magicbot.state_machine import StateRef
 from wpimath import controller
+from wpimath.geometry import Pose2d
 
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import tools
@@ -13,10 +14,12 @@ from common.path_helper import PathHelper
 from components.chariot import Chariot
 from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
+from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
+from components.reefscape import CagePositionKeys
 from components.swervedrive import SwerveDrive
-from components.lift import Lift
+
 
 
 class ActionStow(StateMachine):
@@ -184,48 +187,56 @@ class ActionCycle(StateMachine):
             self.next_state("move_reef")
         else:
             self.next_state("move_coral")
+        self.cage_time()
 
     @state
     def move_reef(self):
         print("ActionCycle: MOVE_REEF")
         self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
         self.next_state("wait_move_reef")
+        self.cage_time()
 
     @state
     def wait_move_reef(self):
         self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
         if not self.actionPathPlannerV3.is_executing:
             self.next_state("engage_deposit")
+        self.cage_time()
 
     @state
     def engage_deposit(self):
         print("ActionCycle: engage_deposit")
         self.actionIntakeSortie.execute()
         self.next_state("wait_deposit")
+        self.cage_time()
 
     @state
     def wait_deposit(self):
         self.actionIntakeSortie.execute()
         if not self.actionIntakeSortie.is_executing:
             self.next_state("move_coral")
+        self.cage_time()
 
     @state
     def move_coral(self):
         print("ActionCycle: move_coral")
-        self.actionPathPlannerV3.move(self.field_layout.getCoralStation())
+        self.actionPathPlannerV3.move(self.field_layout.getCoralPosition())
         self.next_state("wait_move_coral")
+        self.cage_time()
 
     @state
     def wait_move_coral(self):
-        self.actionPathPlannerV3.move(self.field_layout.getCoralStation())
+        self.actionPathPlannerV3.move(self.field_layout.getCoralPosition())
         if not self.actionPathPlannerV3.is_executing:
             self.next_state("engage_intake")
+        self.cage_time()
 
     @state
     def engage_intake(self):
         print("ActionCycle: engage_intake")
         self.actionIntakeEntree.execute()
         self.next_state("wait_intake")
+        self.cage_time()
 
     @state
     def wait_intake(self):
@@ -233,3 +244,35 @@ class ActionCycle(StateMachine):
         self.actionIntakeEntree.execute()
         if not self.actionIntakeEntree.is_executing:
             self.next_state("move_reef")
+        self.cage_time()
+
+    @state
+    def move_cage(self):
+        print("ActionCycle: move_cage")
+        cagePosition: Pose2d | None = self.field_layout.getCagePosition()
+        if cagePosition is None:
+            self.next_state("start")
+        else:
+            self.actionPathPlannerV3.move(cagePosition)
+        self.next_state("wait_move_cage")
+
+    @state
+    def wait_move_cage(self):
+        cagePosition: Pose2d | None = self.field_layout.getCagePosition()
+        if cagePosition is None:
+            self.next_state("start")
+        else:
+            if not self.actionPathPlannerV3.is_executing:
+                self.next_state("wait_for_input")
+            else:
+                self.actionPathPlannerV3.move(cagePosition)
+
+    @state
+    def wait_for_input(self):
+        cagePosition: Pose2d | None = self.field_layout.getCagePosition()
+        if cagePosition is None:
+            self.next_state("start")
+
+    def cage_time(self):
+        if self.field_layout.getCagePosition() is not None:
+            self.next_state("move_cage")

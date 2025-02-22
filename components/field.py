@@ -7,7 +7,7 @@ from robotpy_apriltag import AprilTagFieldLayout
 from wpimath.geometry import Pose2d, Rotation2d
 
 import common.tools
-from components.reefscape import REEFSCAPE, Position
+from components.reefscape import REEFSCAPE, CagePositionKeys, Position
 from components.rikistick import RikiStick
 from components.swervedrive import SwerveDrive
 
@@ -41,7 +41,8 @@ class FieldLayout(AprilTagFieldLayout):
         corals_right = list(
             [position_to_pose2d(x) for x in REEFSCAPE["red"]["coral"]["right"].values()]
         )
-        return reef + corals_left + corals_right
+        cage = list([position_to_pose2d(x) for x in REEFSCAPE["red"]["cage"].values()])
+        return reef + corals_left + corals_right + cage
 
     @feedback
     def blueBranches(self) -> list[Pose2d]:
@@ -56,7 +57,8 @@ class FieldLayout(AprilTagFieldLayout):
                 for x in REEFSCAPE["blue"]["coral"]["right"].values()
             ]
         )
-        return reef + corals_left + corals_right
+        cage = list([position_to_pose2d(x) for x in REEFSCAPE["blue"]["cage"].values()])
+        return reef + corals_left + corals_right + cage
 
     def getSide(self) -> str:
         if common.tools.is_red():
@@ -66,7 +68,7 @@ class FieldLayout(AprilTagFieldLayout):
         else:
             raise Exception("Pick a side")
 
-    def getCoralStation(self) -> Pose2d:
+    def getCoralPosition(self) -> Pose2d:
         positions: list[Pose2d] = list(
             [
                 position_to_pose2d(x)
@@ -76,6 +78,14 @@ class FieldLayout(AprilTagFieldLayout):
             ]
         )
         return find_closest_pose(self.drivetrain.getPose(), positions)
+
+    def getCagePosition(self) -> Pose2d | None:
+        if self.rikiStick.cagePosition == CagePositionKeys.NONE:
+            return None
+        print("GOT CAGE")
+        return position_to_pose2d(
+            REEFSCAPE[self.getSide()]["cage"][self.rikiStick.cagePosition]
+        )
 
     def getReefPosition(self) -> Pose2d:
         position: Position = REEFSCAPE[self.getSide()]["reef"][

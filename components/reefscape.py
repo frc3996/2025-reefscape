@@ -69,17 +69,22 @@ class ReefPositions(TypedDict):
 
 
 class CagePositionKeys(StrEnum):
+    NONE = "none"
     LEFT = "left"
     MIDDLE = "middle"
     RIGHT = "right"
 
 
-# XXX: Do the cages..
+class CagePositions(TypedDict):
+    left: Position
+    middle: Position
+    right: Position
 
 
 class CoralReef(TypedDict):
     coral: CoralStation
     reef: ReefPositions
+    cage: CagePositions
 
 
 class Reefscape(TypedDict):
@@ -134,6 +139,11 @@ REEFSCAPE: Reefscape = {
             "k": {"x": 4.782, "y": 4.243, "rot": -60.0},
             "l": {"x": 3.959, "y": 4.616, "rot": -60.0},
         },
+        "cage": {
+            "left": {"x": 8.7, "y": 7.10, "rot": 0.0},
+            "middle": {"x": 8.7, "y": 6.10, "rot": 0.0},
+            "right": {"x": 8.7, "y": 5.10, "rot": 0.0},
+        },
     },
     "red": {
         "coral": {
@@ -161,6 +171,11 @@ REEFSCAPE: Reefscape = {
             "j": {"x": 12.811, "y": 4.783, "rot": -60.0},
             "k": {"x": 12.766, "y": 4.243, "rot": -120.0},
             "l": {"x": 13.589, "y": 4.616, "rot": -120.0},
+        },
+        "cage": {
+            "left": {"x": 8.7, "y": 1.03, "rot": 180.0},
+            "middle": {"x": 8.7, "y": 2.03, "rot": 180.0},
+            "right": {"x": 8.7, "y": 3.03, "rot": 180.0},
         },
     },
 }
