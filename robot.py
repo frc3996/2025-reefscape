@@ -41,7 +41,7 @@ from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.rikistick import RikiStick
-from components.robot_actions import ActionCycle
+from components.robot_actions import ActionCycle, ActionIntake, ActionShoot, ActionStow
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -81,6 +81,11 @@ class MyRobot(MagicRobot):
     actionAngularMaxVelocity: AngularMaxVelocity
     actionMaxVelocity: MaxVelocity
     actionMaxAccel: MaxAccel
+
+    ## Manual Mode
+    actionShoot: ActionShoot
+    actionIntake: ActionIntake
+    actionStow: ActionStow
 
     ##### LOW Level components #####
 
@@ -212,6 +217,10 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
+        if not self.gamepad_copilote.getRawButton(1):
+            self.teleopManualMode()
+            return
+
         # self.teleopDrive()
         # self.teleopLift()
         # self.teleopClimb()
@@ -268,6 +277,9 @@ class MyRobot(MagicRobot):
             self.lift.go_deplacement()
 
     def teleopDrive(self):
+        # TODO
+        # Moduler la vitesse du robot en téléop selon la hauteur du lift
+
         leftY = gamepad_helper.apply_deadzone(
             self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
         )
@@ -281,6 +293,7 @@ class MyRobot(MagicRobot):
         )
 
         if self.gamepad_pilote.getAButton():
+
             # self.actionTrajectoryFollower.engage()
             # self.actionPathPlanner.engage()
             self.actionPathPlannerV3.engage()
@@ -303,3 +316,19 @@ class MyRobot(MagicRobot):
         rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
+
+    def teleopManualMode(self):
+        # self.teleopDrive()
+
+        if self.gamepad_pilote.getBButton():
+            self.actionShoot.engage(self.actionShoot.TARGET_L1)
+        elif self.gamepad_pilote.getAButton():
+            self.actionShoot.engage(self.actionShoot.TARGET_L2)
+        elif self.gamepad_pilote.getXButton():
+            self.actionShoot.engage(self.actionShoot.TARGET_L3)
+        elif self.gamepad_pilote.getYButton():
+            self.actionShoot.engage(self.actionShoot.TARGET_L4)
+        elif self.gamepad_pilote.getLeftBumper():
+            self.actionIntake.engage()
+        elif self.gamepad_pilote.getRightBumper():
+            self.actionIntakeSortie.engage()

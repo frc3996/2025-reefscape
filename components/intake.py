@@ -1,3 +1,4 @@
+from operator import ne
 import rev
 import wpilib
 from magicbot import StateMachine, feedback, tunable, will_reset_to
@@ -97,40 +98,19 @@ class ActionIntakeEntree(StateMachine):
         if self.intake.piece_chargee():
             self.intake.set_intake_speed(0)
             self.intake.set_output_speed(0)
-            self.next_state("finish")
+            self.done()
         else:
             self.chariot.move_intake_back_for_intake()
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
             self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
 
-    @state
-    def finish(self):
-        # TODO Flasher lumiere arduino
-        pass
-
 
 class ActionIntakeSortie(StateMachine):
     intake: Intake
     VITESSE_MOTEUR: float = 0.25
-    active: bool = True
 
-    @state(first=True)
-    def intakeSortie(self):
-        print("Demarrage de la sortie intake")
-        active = True
-        self.intake.set_intake_speed(self.VITESSE_MOTEUR)
-        self.intake.set_output_speed(self.VITESSE_MOTEUR)
-        if not self.intake.piece_chargee():
-            self.next_state("intakeFinirSortie")
-
-    @timed_state(duration=0.5, next_state="intakeFinish")
+    @timed_state(first=True, duration=0.5, must_finish=True)
     def intakeFinirSortie(self):
         self.intake.set_intake_speed(self.VITESSE_MOTEUR)
         self.intake.set_output_speed(self.VITESSE_MOTEUR)
         print("Demarrage de la finition de la sortie intake")
-
-    @state
-    def intakeFinish(self):
-        # TODO Flasher lumiere arduino
-        active = False
-        pass

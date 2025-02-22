@@ -10,6 +10,7 @@ from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
+from components.chariot import Chariot
 from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.limelight import LimeLightVision
@@ -17,32 +18,22 @@ from components.pixy import Pixy
 from components.swervedrive import SwerveDrive
 from components.lift import Lift
 
+
 class ActionStow(StateMachine):
-    is_sim: bool
-    # intake: Intake
+    lift: Lift
 
-    def engage(
-        self, initial_state: StateRef | None = None, force: bool = False
-    ) -> None:
-        return super().engage(initial_state, force)
-
-    @timed_state(first=True, must_finish=True, duration=2)
+    @state(first=True)
     def position_all(self):
         """Premier etat, position la tete, et on s'assure que plu rien tourne"""
-        if self.is_sim:
-            self.done()
-
-        # TODO
-        # self.intake.disable_intake()
-
-    def done(self):
-        super().done()
+        self.lift.go_deplacement()
+        self.done()
 
 
 class ActionIntake(StateMachine):
     lift: Lift
     intake: Intake
-    action_intake_entree: ActionIntakeEntree
+    actionIntakeEntree: ActionIntakeEntree
+    actionStow: ActionStow
 
     def engage(
         self, initial_state: StateRef | None = None, force: bool = False
@@ -51,6 +42,7 @@ class ActionIntake(StateMachine):
 
     @state(first=True)
     def move_lift(self):
+        print("ActionIntake", "move_lift")
         if self.intake.has_object():
             self.done()
 
@@ -60,16 +52,83 @@ class ActionIntake(StateMachine):
 
     @state
     def start_intake(self):
-        self.action_intake_entree.engage()
-        if not self.action_intake_entree.is_executing:
+        print("ActionIntake", "start_intake")
+        self.actionIntakeEntree.engage()
+        if self.intake.has_object():
             self.next_state("finish")
 
     @state
     def finish(self, initial_call):
+        print("ActionIntake", "finish")
         # TODO Flasher des lumieres????
-        self.lift.go_deplacement()
+        self.actionStow.engage()
+        self.done()
 
     def done(self) -> None:
+        print("ActionIntake", "done")
+        return super().done()
+
+
+class ActionShoot(StateMachine):
+    lift: Lift
+    intake: Intake
+    actionIntakeSortie: ActionIntakeSortie
+    actionStow: ActionStow
+    chariot: Chariot
+    TARGET_L1 = 0
+    TARGET_L2 = 1
+    TARGET_L3 = 2
+    TARGET_L4 = 3
+    current_target = -1
+    ready_to_shoot = False
+    TARGETS = {
+        TARGET_L1: Lift.go_level1,
+        TARGET_L2: Lift.go_level2,
+        TARGET_L3: Lift.go_level3,
+        TARGET_L4: Lift.go_level4
+    }
+
+    def engage(
+        self, target, initial_state: StateRef | None = None, force: bool = False
+    ) -> None:
+        self.current_target = target
+        return super().engage(initial_state, force)
+
+    @state(first=True)
+    def move_lift(self):
+        print("ActionShoot", "move_lift")
+        self.ready_to_shoot = False
+        if self.current_target not in range(0,4):
+            print("INVALID TARGET FOR ActionShoot")
+            self.done()
+
+        self.TARGETS[self.current_target](self.lift)
+        if self.lift.atGoal() and self.chariot.get_chariot_front_limit_switch():
+            self.next_state("wait_release")
+
+    @state
+    def wait_release(self):
+        print("ActionShoot", "wait_release")
+        self.ready_to_shoot = True
+
+    @state(must_finish=True)
+    def shoot_object(self, initial_call):
+        print("ActionShoot", "shoot_object")
+        if initial_call:
+            self.actionIntakeSortie.engage()
+
+        if not self.actionIntakeSortie.is_executing:
+            self.done()
+
+    def done(self) -> None:
+        print("ActionShoot", "done")
+        if self.ready_to_shoot:
+            self.ready_to_shoot = False
+            self.next_state("shoot_object")
+            return
+
+        # TODO Flash limieres
+        self.actionStow.engage()
         return super().done()
 
 

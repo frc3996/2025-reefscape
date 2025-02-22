@@ -9,8 +9,10 @@ import wpimath.units
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 from wpilib._wpilib import Mechanism2d
-
 import constants
+
+
+HEIGHT_TOLERANCE = 0.05
 
 
 class Lift:
@@ -21,11 +23,12 @@ class Lift:
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDeplacement = tunable(0)
-    hauteurLeve11 = tunable(wpimath.units.feetToMeters(2.500))
-    hauteurLeve12 = tunable(wpimath.units.feetToMeters(5.000))
-    hauteurLeve13 = tunable(wpimath.units.feetToMeters(7.500))
-    hauteurIntake = tunable(wpimath.units.feetToMeters(1.000))
+    hauteurDeplacement = tunable(wpimath.units.feetToMeters(2.500))
+    hauteurIntake = tunable(wpimath.units.feetToMeters(2.500))
+    hauteurLevel1 = tunable(wpimath.units.feetToMeters(2.500))
+    hauteurLevel2 = tunable(wpimath.units.feetToMeters(5.000))
+    hauteurLevel3 = tunable(wpimath.units.feetToMeters(7.500))
+    hauteurLevel4 = tunable(wpimath.units.feetToMeters(10.000))
     hauteurMargeErreur = tunable(0.01)
 
     # hauteur cible
@@ -53,6 +56,7 @@ class Lift:
                 ),
             )
         )
+        self.liftPIDController.setTolerance(HEIGHT_TOLERANCE)
 
         slaveConfig = rev.SparkBaseConfig()
         _ = slaveConfig.follow(constants.CANIds.LIFT_MOTOR_MAIN, False)
@@ -83,13 +87,16 @@ class Lift:
         self.__aller_a_hauteur(self.hauteurIntake)
 
     def go_level1(self):
-        self.__aller_a_hauteur(self.hauteurLeve11)
+        self.__aller_a_hauteur(self.hauteurLevel1)
 
     def go_level2(self):
-        self.__aller_a_hauteur(self.hauteurLeve12)
+        self.__aller_a_hauteur(self.hauteurLevel2)
 
     def go_level3(self):
-        self.__aller_a_hauteur(self.hauteurLeve13)
+        self.__aller_a_hauteur(self.hauteurLevel3)
+
+    def go_level4(self):
+        self.__aller_a_hauteur(self.hauteurLevel4)
 
     def go_deplacement(self):
         self.__aller_a_hauteur(self.hauteurDeplacement)
