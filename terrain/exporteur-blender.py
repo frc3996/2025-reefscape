@@ -1,22 +1,20 @@
 import bpy
 import json
+import math
 from pathlib import Path
 from typing import List
 
-# Conversion des types Blender vers liste de floats Python
-def Vec2List(v) -> List[float]:
-    return [v.x, v.y, v.z]
+def QuatVersDegree2D(q) -> float:
+    q.normalize()
+    return math.degrees(q.to_euler("XYZ")[2])
 
-def Quat2List(q) -> List[float]:
-    return [q.x, q.y, q.z, q.w]
+prefixesInteressants = tuple(["b_", "r_"])
 
-prefixesInteressants = ["b_", "r_"]
-
-objets = [] # liste de dictionnaires
+objets = {} # liste de dictionnaires
 for obj in bpy.data.objects:
-    if obj.name.startswith(tuple(prefixesInteressants)):
+    if obj.name.startswith(prefixesInteressants):
         position, rotation, scale = obj.matrix_world.decompose()
-        objets.append({'name': obj.name, 'pos': Vec2List(position), 'quat': Quat2List(rotation), 'scale': Vec2List(scale)})
+        objets[obj.name] = {'pos': [position.x, position.y], 'rot': QuatVersDegree2D(rotation)}
 
 dossierMaison = Path.home()
 with open(dossierMaison / 'terrain.json', 'w', encoding='utf-8') as fichier:
