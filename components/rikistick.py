@@ -7,10 +7,13 @@ from components.reefscape import (CagePositionKeys, CoralStationKeys,
 class RikiStick:
 
     def __init__(self) -> None:
-        self.joystick: wpilib.Joystick = wpilib.Joystick(3)
+        self.joystick: wpilib.Joystick = wpilib.Joystick(5)
         self._coralStation: CoralStationKeys = CoralStationKeys.LEFT
         self._reefPosition: ReefPositionsKeys = ReefPositionsKeys.A
         self._cagePosition: CagePositionKeys = CagePositionKeys.MIDDLE
+
+        self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
+        self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
 
     @property
     def coralStation(self) -> str:
@@ -26,6 +29,46 @@ class RikiStick:
 
     def execute(self):
         # ReefBranch
+        if self.rikistick2.getRawButton(2):
+            self._reefPosition = ReefPositionsKeys.A
+        elif self.rikistick2.getRawButton(1):
+            self._reefPosition = ReefPositionsKeys.B
+        elif self.rikistick2.getRawButton(9):
+            self._reefPosition = ReefPositionsKeys.C
+        elif self.rikistick2.getRawButton(7):
+            self._reefPosition = ReefPositionsKeys.D
+        elif self.rikistick2.getRawButton(11):
+            self._reefPosition = ReefPositionsKeys.E
+        elif self.rikistick2.getRawButton(6):
+            self._reefPosition = ReefPositionsKeys.F
+        elif self.rikistick2.getRawButton(10):
+            self._reefPosition = ReefPositionsKeys.G
+        elif self.rikistick2.getRawButton(16):
+            self._reefPosition = ReefPositionsKeys.H
+        elif self.rikistick2.getRawButton(15):
+            self._reefPosition = ReefPositionsKeys.I
+        elif self.rikistick2.getRawButton(14):
+            self._reefPosition = ReefPositionsKeys.J
+        elif self.rikistick2.getRawButton(5):
+            self._reefPosition = ReefPositionsKeys.K
+        elif self.rikistick2.getRawButton(3):
+            self._reefPosition = ReefPositionsKeys.L
+
+        # Coral Station
+        if self.rikistick1.getRawButton(1):
+            self._coralStation = CoralStationKeys.LEFT
+        elif self.rikistick1.getRawButton(2):
+            self._coralStation = CoralStationKeys.RIGHT
+
+        # CagePosition
+        if self.rikistick2.getRawButton(14):
+            self._cagePosition = CagePositionKeys.LEFT
+        if self.rikistick2.getRawButton(15):
+            self._cagePosition = CagePositionKeys.MIDDLE
+        if self.rikistick2.getRawButton(16):
+            self._cagePosition = CagePositionKeys.RIGHT
+
+    def execute_sim(self):
         if self.joystick.getRawButton(1):
             self._reefPosition = ReefPositionsKeys.A
         elif self.joystick.getRawButton(2):

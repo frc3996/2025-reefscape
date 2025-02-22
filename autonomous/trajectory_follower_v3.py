@@ -70,8 +70,8 @@ class ActionPathPlannerV3(StateMachine):
         )
 
         self.controller: PPHolonomicDriveController = PPHolonomicDriveController(
-            PIDConstants(2.0, 0.0, 0.0),  # Translation PID constants
-            PIDConstants(2.0, 0.0, 0.0),  # Rotation PID constants
+            PIDConstants(5.0, 0.0, 0.0),  # Translation PID constants
+            PIDConstants(3.0, 0.0, 0.0),  # Rotation PID constants
         )
 
         self.subsystem: Subsystem = self.SwerveSubsystem()
