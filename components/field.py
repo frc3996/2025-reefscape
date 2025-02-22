@@ -7,7 +7,7 @@ from robotpy_apriltag import AprilTagFieldLayout
 from wpimath.geometry import Pose2d, Rotation2d
 
 import common.tools
-from components.reefscape import REEFSCAPE, Position
+from components.reefscape import REEFSCAPE, CagePositionKeys, Position
 from components.rikistick import RikiStick
 from components.swervedrive import SwerveDrive
 
@@ -66,7 +66,7 @@ class FieldLayout(AprilTagFieldLayout):
         else:
             raise Exception("Pick a side")
 
-    def getCoralStation(self) -> Pose2d:
+    def getCoralPosition(self) -> Pose2d:
         positions: list[Pose2d] = list(
             [
                 position_to_pose2d(x)
@@ -76,6 +76,14 @@ class FieldLayout(AprilTagFieldLayout):
             ]
         )
         return find_closest_pose(self.drivetrain.getPose(), positions)
+
+    def getCagePosition(self) -> Pose2d | None:
+        if self.rikiStick.cagePosition == CagePositionKeys.NONE:
+            return None
+        print("GOT CAGE")
+        return position_to_pose2d(
+            REEFSCAPE[self.getSide()]["cage"][self.rikiStick.cagePosition]
+        )
 
     def getReefPosition(self) -> Pose2d:
         position: Position = REEFSCAPE[self.getSide()]["reef"][

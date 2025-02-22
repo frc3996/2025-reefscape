@@ -10,7 +10,7 @@ class RikiStick:
         self.joystick: wpilib.Joystick = wpilib.Joystick(5)
         self._coralStation: CoralStationKeys = CoralStationKeys.LEFT
         self._reefPosition: ReefPositionsKeys = ReefPositionsKeys.A
-        self._cagePosition: CagePositionKeys = CagePositionKeys.MIDDLE
+        self._cagePosition: CagePositionKeys = CagePositionKeys.NONE
 
         self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
         self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
@@ -61,12 +61,24 @@ class RikiStick:
             self._coralStation = CoralStationKeys.RIGHT
 
         # CagePosition
-        if self.rikistick2.getRawButton(14):
-            self._cagePosition = CagePositionKeys.LEFT
-        if self.rikistick2.getRawButton(15):
-            self._cagePosition = CagePositionKeys.MIDDLE
-        if self.rikistick2.getRawButton(16):
-            self._cagePosition = CagePositionKeys.RIGHT
+        if self.rikistick1.getRawButtonPressed(14):
+            if self._cagePosition == CagePositionKeys.LEFT:
+                self._cagePosition = CagePositionKeys.NONE
+            else:
+                print("CAGE1")
+                self._cagePosition = CagePositionKeys.LEFT
+        if self.rikistick1.getRawButtonPressed(15):
+            if self._cagePosition == CagePositionKeys.MIDDLE:
+                self._cagePosition = CagePositionKeys.NONE
+            else:
+                print("CAGE2")
+                self._cagePosition = CagePositionKeys.MIDDLE
+        if self.rikistick1.getRawButtonPressed(16):
+            if self._cagePosition == CagePositionKeys.RIGHT:
+                self._cagePosition = CagePositionKeys.NONE
+            else:
+                print("CAGE3")
+                self._cagePosition = CagePositionKeys.RIGHT
 
     def execute_sim(self):
         if self.joystick.getRawButton(1):
