@@ -41,7 +41,8 @@ from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.rikistick import RikiStick
-from components.robot_actions import ActionCycle, ActionIntake, ActionShoot, ActionStow
+from components.robot_actions import (ActionCycle, ActionIntake, ActionShoot,
+                                      ActionStow)
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -216,15 +217,15 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        if not self.gamepad_copilote.getRawButton(1):
-            self.teleopManualMode()
-            return
+        # if not self.gamepad_copilote.getRawButton(1):
+        self.teleopManualMode()
+        # return
 
         # self.teleopDrive()
         # self.teleopLift()
         # self.teleopClimb()
         # self.teleopIntake()
-        self.teleopCycle()
+        # self.teleopCycle()
 
     def teleopCycle(self):
         leftY = gamepad_helper.apply_deadzone(

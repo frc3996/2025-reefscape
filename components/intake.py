@@ -1,10 +1,12 @@
 from operator import ne
+
 import rev
 import wpilib
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
-from components.chariot import Chariot
+
 import constants
+from components.chariot import Chariot
 
 
 class Intake:
@@ -98,11 +100,15 @@ class ActionIntakeEntree(StateMachine):
         if self.intake.piece_chargee():
             self.intake.set_intake_speed(0)
             self.intake.set_output_speed(0)
-            self.done()
+            self.next_state("finish")
         else:
             self.chariot.move_intake_back_for_intake()
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
             self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
+
+    @state
+    def finish(self):
+        pass
 
 
 class ActionIntakeSortie(StateMachine):
@@ -113,4 +119,9 @@ class ActionIntakeSortie(StateMachine):
     def intakeFinirSortie(self):
         self.intake.set_intake_speed(self.VITESSE_MOTEUR)
         self.intake.set_output_speed(self.VITESSE_MOTEUR)
+        self.next_state("finish")
         print("Demarrage de la finition de la sortie intake")
+
+    @state
+    def finish(self):
+        pass

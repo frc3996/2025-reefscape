@@ -28,6 +28,12 @@ class RikiStick:
         return str(self._reefPosition)
 
     def execute(self):
+        if self.rikistick1.getButtonCount() == 0:
+            return
+        if self.rikistick2.getButtonCount() == 0:
+            return
+        if self.joystick.getButtonCount() == 0:
+            return
         # ReefBranch
         if self.rikistick2.getRawButton(2):
             self._reefPosition = ReefPositionsKeys.A

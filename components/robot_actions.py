@@ -21,7 +21,6 @@ from components.reefscape import CagePositionKeys
 from components.swervedrive import SwerveDrive
 
 
-
 class ActionStow(StateMachine):
     lift: Lift
 
@@ -88,9 +87,10 @@ class ActionShoot(StateMachine):
         TARGET_L1: Lift.go_level1,
         TARGET_L2: Lift.go_level2,
         TARGET_L3: Lift.go_level3,
-        TARGET_L4: Lift.go_level4
+        TARGET_L4: Lift.go_level4,
     }
 
+    @override
     def engage(
         self, target, initial_state: StateRef | None = None, force: bool = False
     ) -> None:
@@ -101,13 +101,17 @@ class ActionShoot(StateMachine):
     def move_lift(self):
         print("ActionShoot", "move_lift")
         self.ready_to_shoot = False
-        if self.current_target not in range(0,4):
+        if self.current_target not in range(0, 4):
             print("INVALID TARGET FOR ActionShoot")
             self.done()
 
         self.TARGETS[self.current_target](self.lift)
         if self.lift.atGoal() and self.chariot.get_chariot_front_limit_switch():
             self.next_state("wait_release")
+        elif not self.lift.atGoal():
+            print("ActionShoot: Waiting for lift")
+        elif not self.chariot.get_chariot_front_limit_switch():
+            print("ActionShoot: Waiting for chariot")
 
     @state
     def wait_release(self):

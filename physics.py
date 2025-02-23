@@ -4,6 +4,7 @@ import rev
 import wpilib
 import wpilib.simulation
 from pyfrc.physics.core import PhysicsInterface
+from wpilib._wpilib import MechanismRoot2d
 from wpimath.geometry import Pose2d
 from wpimath.system.plant import DCMotor
 
@@ -46,6 +47,76 @@ LIME = wpilib.Color8Bit(50, 205, 50)
 TEAL = wpilib.Color8Bit(0, 128, 128)
 PURPLE = wpilib.Color8Bit(128, 0, 128)
 BROWN = wpilib.Color8Bit(139, 69, 19)
+
+
+class ChariotSimulator:
+    def __init__(self, robot: "MyRobot"):
+        self.robot: "MyRobot" = robot
+
+        self.chariot_motor_sim: rev.SparkMaxSim = rev.SparkMaxSim(
+            self.robot.chariot.chariot_motor, DCMotor.NEO()
+        )
+
+        self.chariot_encoder_sim: rev.SparkRelativeEncoderSim = (
+            rev.SparkRelativeEncoderSim(self.robot.chariot.chariot_motor)
+        )
+
+        self.chariot_front_limit_switch_sim: wpilib.simulation.DIOSim = (
+            wpilib.simulation.DIOSim(self.robot.chariot.chariot_front_limit_switch)
+        )
+        self.chariot_back_limit_switch_sim: wpilib.simulation.DIOSim = (
+            wpilib.simulation.DIOSim(self.robot.chariot.chariot_back_limit_switch)
+        )
+
+    def simulationPeriodic(self):
+        self.chariot_encoder_sim.setVelocity(self.chariot_motor_sim.getSetpoint())
+
+        pos = (
+            self.chariot_encoder_sim.getPosition()
+            + self.chariot_encoder_sim.getVelocity() * 0.02
+        )
+        self.chariot_encoder_sim.setPosition(min(max(0, pos), 30))
+
+        if self.chariot_encoder_sim.getPosition() <= 0:
+            self.chariot_back_limit_switch_sim.setValue(True)
+        if self.chariot_encoder_sim.getPosition() > 0.01:
+            self.chariot_back_limit_switch_sim.setValue(False)
+
+        if self.chariot_encoder_sim.getPosition() >= 0.30:
+            self.chariot_front_limit_switch_sim.setValue(True)
+        if self.chariot_encoder_sim.getPosition() < 0.29:
+            self.chariot_front_limit_switch_sim.setValue(False)
+
+        self.mech2d = wpilib.Mechanism2d(0.70, 0.5)
+
+        self.beam_front_root: MechanismRoot2d = self.mech2d.getRoot(
+            "BeamFrontRoot", 0.1, 0
+        )
+        self.beam_front = self.beam_front_root.appendLigament(
+            "BeamFront", 0.5, 90, 6, RED
+        )
+
+        self.beam_back_root: MechanismRoot2d = self.mech2d.getRoot(
+            "BeamBackRoot", 0.60, 0
+        )
+        self.beam_back = self.beam_back_root.appendLigament("BeamBack", 0.5, 90, 6, RED)
+
+        self.chariot_root: MechanismRoot2d = self.mech2d.getRoot("ChariotRoot", 0.2, 0)
+        self.chariot = self.chariot_root.appendLigament("Chariot", 0.5, 90, 6, BLUE)
+
+        applyColor(
+            RED if self.chariot_front_limit_switch_sim.getValue() else GREEN,
+            [self.beam_front],
+        )
+        applyColor(
+            RED if self.chariot_back_limit_switch_sim.getValue() else GREEN,
+            [self.beam_back],
+        )
+
+        self.chariot_root.setPosition(self.chariot_encoder_sim.getPosition() + 0.20, 0)
+
+        # Put Mechanism to SmartDashboard
+        wpilib.SmartDashboard.putData("Chariot System Sim", self.mech2d)
 
 
 class IntakeSimulator:
@@ -161,7 +232,7 @@ class LiftSimulator:
 
         # Create a Mechanism2d display of an elevator
         self.mech2d = wpilib.Mechanism2d(1, 3.0)
-        self.elevatorRoot = self.mech2d.getRoot("Elevator Root", 0.5, 0)
+        self.elevatorRoot = self.mech2d.getRoot("Elevator Root", 1.0, 0)
         self.elevatorMech2d = self.elevatorRoot.appendLigament(
             "Elevator",
             self.robot.lift.get_lift_height(),
@@ -382,6 +453,7 @@ class PhysicsEngine:
         self.liftSimulator: LiftSimulator = LiftSimulator(robot)
         self.climbSimulator: ClimbSimulator = ClimbSimulator(robot)
         self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot)
+        self.chariotSimulator: ChariotSimulator = ChariotSimulator(robot)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         """
@@ -402,6 +474,7 @@ class PhysicsEngine:
         self.liftSimulator.simulationPeriodic()
         self.climbSimulator.simulationPeriodic()
         self.intakeSimulator.simulationPeriodic()
+        self.chariotSimulator.simulationPeriodic()
 
         # NavX
         self.navx_yaw.set(-self.robot.drivetrain.getPose().rotation().degrees())
