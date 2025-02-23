@@ -68,6 +68,26 @@ class ChariotSimulator:
             wpilib.simulation.DIOSim(self.robot.chariot.chariot_back_limit_switch)
         )
 
+        self.mech2d = wpilib.Mechanism2d(0.70, 0.5)
+
+        self.beam_front_root: MechanismRoot2d = self.mech2d.getRoot(
+            "BeamFrontRoot", 0.1, 0
+        )
+        self.beam_front = self.beam_front_root.appendLigament(
+            "BeamFront", 0.5, 90, 6, RED
+        )
+
+        self.beam_back_root: MechanismRoot2d = self.mech2d.getRoot(
+            "BeamBackRoot", 0.60, 0
+        )
+        self.beam_back = self.beam_back_root.appendLigament("BeamBack", 0.5, 90, 6, RED)
+
+        self.chariot_root: MechanismRoot2d = self.mech2d.getRoot("ChariotRoot", 0.2, 0)
+        self.chariot = self.chariot_root.appendLigament("Chariot", 0.5, 90, 6, BLUE)
+
+        # Put Mechanism to SmartDashboard
+        wpilib.SmartDashboard.putData("Chariot System Sim", self.mech2d)
+
     def simulationPeriodic(self):
         self.chariot_encoder_sim.setVelocity(self.chariot_motor_sim.getSetpoint())
 
@@ -87,23 +107,6 @@ class ChariotSimulator:
         if self.chariot_encoder_sim.getPosition() < 0.29:
             self.chariot_front_limit_switch_sim.setValue(False)
 
-        self.mech2d = wpilib.Mechanism2d(0.70, 0.5)
-
-        self.beam_front_root: MechanismRoot2d = self.mech2d.getRoot(
-            "BeamFrontRoot", 0.1, 0
-        )
-        self.beam_front = self.beam_front_root.appendLigament(
-            "BeamFront", 0.5, 90, 6, RED
-        )
-
-        self.beam_back_root: MechanismRoot2d = self.mech2d.getRoot(
-            "BeamBackRoot", 0.60, 0
-        )
-        self.beam_back = self.beam_back_root.appendLigament("BeamBack", 0.5, 90, 6, RED)
-
-        self.chariot_root: MechanismRoot2d = self.mech2d.getRoot("ChariotRoot", 0.2, 0)
-        self.chariot = self.chariot_root.appendLigament("Chariot", 0.5, 90, 6, BLUE)
-
         applyColor(
             RED if self.chariot_front_limit_switch_sim.getValue() else GREEN,
             [self.beam_front],
@@ -114,9 +117,6 @@ class ChariotSimulator:
         )
 
         self.chariot_root.setPosition(self.chariot_encoder_sim.getPosition() + 0.20, 0)
-
-        # Put Mechanism to SmartDashboard
-        wpilib.SmartDashboard.putData("Chariot System Sim", self.mech2d)
 
 
 class IntakeSimulator:
