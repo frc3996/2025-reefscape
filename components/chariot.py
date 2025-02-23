@@ -68,7 +68,12 @@ class Chariot:
             self.lift.get_lift_height() < self.safe_lift_height
             or self.lift.get_hauteur_cible() < self.safe_lift_height
         ):
-            print("Cancelling to avoid head crash")
+            print(
+                f"""Cancelling to avoid head crash
+                    {self.lift.get_lift_height()} < {self.safe_lift_height}
+                    or {self.lift.get_hauteur_cible()} < {self.safe_lift_height}
+                """
+            )
             return
 
         self.__current_target = TARGET_BACK

@@ -44,11 +44,6 @@ class Intake:
         # S'assure que la vitesse maximale ne peut pas être dépassée
         self.__target_output_speed = speed
 
-    def has_object(self):
-        """Retourne si l'intake est déjà en possession d'un objet"""
-        # TODO demander au beam sensor?
-        return False
-
     def enable_intake_motor(self):
         """Active le moteur de l'intake"""
         self.set_intake_speed(0.5)
@@ -102,6 +97,7 @@ class ActionIntakeEntree(StateMachine):
             self.intake.set_output_speed(0)
             self.next_state("finish")
         else:
+            print("WWEEE gooOOTT Thiss")
             self.chariot.move_intake_back_for_intake()
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
             self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
@@ -115,11 +111,10 @@ class ActionIntakeSortie(StateMachine):
     intake: Intake
     VITESSE_MOTEUR: float = 0.25
 
-    @timed_state(first=True, duration=0.5, must_finish=True)
+    @timed_state(first=True, duration=0.5, must_finish=True, next_state="finish")
     def intakeFinirSortie(self):
         self.intake.set_intake_speed(self.VITESSE_MOTEUR)
         self.intake.set_output_speed(self.VITESSE_MOTEUR)
-        self.next_state("finish")
         print("Demarrage de la finition de la sortie intake")
 
     @state

@@ -45,7 +45,7 @@ class ActionIntake(StateMachine):
     @state(first=True)
     def move_lift(self):
         print("ActionIntake", "move_lift")
-        if self.intake.has_object():
+        if self.intake.piece_chargee():
             self.done()
 
         self.lift.go_intake()
@@ -56,7 +56,7 @@ class ActionIntake(StateMachine):
     def start_intake(self):
         print("ActionIntake", "start_intake")
         self.actionIntakeEntree.engage()
-        if self.intake.has_object():
+        if self.intake.piece_chargee():
             self.next_state("finish")
 
     @state
@@ -187,7 +187,7 @@ class ActionCycle(StateMachine):
     @state(first=True)
     def start(self):
         print("ActionCycle: START")
-        if self.intake.has_object():
+        if self.intake.piece_chargee():
             self.next_state("move_reef")
         else:
             self.next_state("move_coral")

@@ -9,8 +9,8 @@ import wpimath.units
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 from wpilib._wpilib import Mechanism2d
-import constants
 
+import constants
 
 HEIGHT_TOLERANCE = 0.05
 
@@ -23,12 +23,13 @@ class Lift:
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDeplacement = tunable(wpimath.units.feetToMeters(2.500))
-    hauteurIntake = tunable(wpimath.units.feetToMeters(2.500))
-    hauteurLevel1 = tunable(wpimath.units.feetToMeters(2.500))
-    hauteurLevel2 = tunable(wpimath.units.feetToMeters(5.000))
-    hauteurLevel3 = tunable(wpimath.units.feetToMeters(7.500))
-    hauteurLevel4 = tunable(wpimath.units.feetToMeters(10.000))
+    hauteurDepart = wpimath.units.feetToMeters(2.500)
+    hauteurDeplacement = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
+    hauteurIntake = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
+    hauteurLevel1 = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
+    hauteurLevel2 = tunable(wpimath.units.feetToMeters(5.000) - hauteurDepart)
+    hauteurLevel3 = tunable(wpimath.units.feetToMeters(7.500) - hauteurDepart)
+    hauteurLevel4 = tunable(wpimath.units.feetToMeters(10.000) - hauteurDepart)
     hauteurMargeErreur = tunable(0.01)
 
     # hauteur cible
