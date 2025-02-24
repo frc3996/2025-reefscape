@@ -63,11 +63,11 @@ class ActionIntake(StateMachine):
     def finish(self, initial_call):
         print("ActionIntake", "finish")
         # TODO Flasher des lumieres????
-        self.actionStow.engage()
         self.done()
 
     def done(self) -> None:
         print("ActionIntake", "done")
+        self.actionStow.engage()
         return super().done()
 
 

@@ -4,6 +4,7 @@ import rev
 import wpilib
 import wpimath.units
 from magicbot import feedback, tunable, will_reset_to
+import wpimath.units
 
 import constants
 from components.lift import Lift
@@ -14,8 +15,8 @@ CURRENT_LIMIT_AMP = 5
 
 
 class Chariot:
-    chariot_speed: float = tunable(3)
-    safe_lift_height: float = tunable(1.0)
+    chariot_speed = tunable(3)
+    safe_lift_height = tunable(wpimath.units.inchesToMeters(10))
     __chariot_cmd = will_reset_to(0)
     __current_target = will_reset_to(TARGET_FRONT)
     __last_target = TARGET_FRONT

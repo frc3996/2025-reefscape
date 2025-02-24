@@ -23,8 +23,8 @@ class Lift:
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDepart = wpimath.units.feetToMeters(2.500)
-    hauteurDeplacement = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
+    hauteurDepart = wpimath.units.inchesToMeters(7)
+    hauteurDeplacement = tunable(wpimath.units.feetToMeters(1.250) - hauteurDepart)
     hauteurIntake = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
     hauteurLevel1 = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
     hauteurLevel2 = tunable(wpimath.units.feetToMeters(5.000) - hauteurDepart)
