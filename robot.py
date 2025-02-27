@@ -41,6 +41,7 @@ from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.rikistick import RikiStick
+from components.reefscape import Reefscape
 from components.robot_actions import (ActionCycle, ActionIntake, ActionShoot,
                                       ActionStow)
 
@@ -101,6 +102,7 @@ class MyRobot(MagicRobot):
 
     # FieldLayout
     field_layout: FieldLayout
+    reefscape : Reefscape
 
     # Vision
     limelight_vision: LimeLightVision

@@ -1,103 +1,11 @@
-from enum import StrEnum
-from typing import TypedDict
-
+import json
+from typing import List
+from dataclasses import dataclass
+from wpilib import DriverStation
+from wpimath.geometry import Pose2d, Rotation2d
 import wpimath.units
 
-
-class PositionKeys(StrEnum):
-    X = "x"
-    Y = "y"
-    ROT = "rot"
-
-
-class Position(TypedDict):
-    x: float
-    y: float
-    rot: float
-
-
-class PickupPositionsKeys(StrEnum):
-    P1 = "p1"
-    P2 = "p2"
-    P3 = "p3"
-
-
-class PickupPositions(TypedDict):
-    p1: Position
-    p2: Position
-    p3: Position
-
-
-class CoralStationKeys(StrEnum):
-    LEFT = "left"
-    RIGHT = "right"
-
-
-class CoralStation(TypedDict):
-    left: PickupPositions
-    right: PickupPositions
-
-
-class ReefPositionsKeys(StrEnum):
-    A = "a"
-    B = "b"
-    C = "c"
-    D = "d"
-    E = "e"
-    F = "f"
-    G = "g"
-    H = "h"
-    I = "i"
-    J = "j"
-    K = "k"
-    L = "l"
-
-
-class ReefPositions(TypedDict):
-    a: Position
-    b: Position
-    c: Position
-    d: Position
-    e: Position
-    f: Position
-    g: Position
-    h: Position
-    i: Position
-    j: Position
-    k: Position
-    l: Position
-
-
-class CagePositionKeys(StrEnum):
-    NONE = "none"
-    LEFT = "left"
-    MIDDLE = "middle"
-    RIGHT = "right"
-
-
-class CagePositions(TypedDict):
-    left: Position
-    middle: Position
-    right: Position
-
-
-class CoralReef(TypedDict):
-    coral: CoralStation
-    reef: ReefPositions
-    cage: CagePositions
-
-
-class Reefscape(TypedDict):
-    blue: CoralReef
-    red: CoralReef
-
-
-class CoralLevel(StrEnum):
-    L1 = "l1"
-    L2 = "l2"
-    L3 = "l3"
-    L4 = "l4"
-
+NOM_FICHIER_TERRAIN : str = "terrain/terrain.json"
 
 FIELD_LENGTH = 17.548
 FIELD_WIDTH = 8.052
@@ -110,72 +18,63 @@ CORAL_LEVEL = {
     "l4": wpimath.units.feetToMeters(1.000),
 }
 
+class Reefscape:
 
-REEFSCAPE: Reefscape = {
-    "blue": {
-        "coral": {
-            "left": {
-                "p1": {"x": 0.351154, "y": 6.89648, "rot": 135.0},
-                "p2": {"x": 0.851154, "y": 7.39648, "rot": 135.0},
-                "p3": {"x": 1.351154, "y": 7.89648, "rot": 135.0},
-            },
-            "right": {
-                "p1": {"x": 0.451154, "y": 1.15532, "rot": -135.0},
-                "p2": {"x": 0.851154, "y": 0.65532, "rot": -135.0},
-                "p3": {"x": 1.351154, "y": 0.15532, "rot": -135.0},
-            },
-        },
-        "reef": {
-            "a": {"x": 3.71, "y": 4.19, "rot": 0.0},
-            "b": {"x": 3.71, "y": 3.862, "rot": 0.0},
-            "c": {"x": 3.939, "y": 3.434, "rot": 60.0},
-            "d": {"x": 4.243, "y": 3.269, "rot": 60.0},
-            "e": {"x": 4.736, "y": 3.272, "rot": 120.0},
-            "f": {"x": 5.02, "y": 3.435, "rot": 120.0},
-            "g": {"x": 5.267, "y": 3.862, "rot": 180.0},
-            "h": {"x": 5.267, "y": 4.19, "rot": 180.0},
-            "i": {"x": 5.02, "y": 4.615, "rot": -120.0},
-            "j": {"x": 4.737, "y": 4.783, "rot": -120.0},
-            "k": {"x": 4.782, "y": 4.243, "rot": -60.0},
-            "l": {"x": 3.959, "y": 4.616, "rot": -60.0},
-        },
-        "cage": {
-            "left": {"x": 8.7, "y": 7.10, "rot": 0.0},
-            "middle": {"x": 8.7, "y": 6.10, "rot": 0.0},
-            "right": {"x": 8.7, "y": 5.10, "rot": 0.0},
-        },
-    },
-    "red": {
-        "coral": {
-            "left": {
-                "p1": {"x": 16.997198, "y": 1.26532, "rot": -45.0},
-                "p2": {"x": 16.497198, "y": 0.85532, "rot": -45.0},
-                "p3": {"x": 15.897198, "y": 0.45532, "rot": -45.0},
-            },
-            "right": {
-                "p1": {"x": 16.997198, "y": 6.69648, "rot": 45.0},
-                "p2": {"x": 16.497198, "y": 7.19648, "rot": 45.0},
-                "p3": {"x": 15.897198, "y": 7.59648, "rot": 45.0},
-            },
-        },
-        "reef": {
-            "a": {"x": 14.338, "y": 4.19, "rot": 180.0},
-            "b": {"x": 14.338, "y": 3.862, "rot": 180.0},
-            "c": {"x": 13.609, "y": 3.434, "rot": 120.0},
-            "d": {"x": 13.305, "y": 3.269, "rot": 120.0},
-            "e": {"x": 12.812, "y": 3.272, "rot": 60.0},
-            "f": {"x": 12.528, "y": 3.435, "rot": 60.0},
-            "g": {"x": 12.281, "y": 3.862, "rot": 0.0},
-            "h": {"x": 12.281, "y": 4.19, "rot": 0.0},
-            "i": {"x": 12.528, "y": 4.615, "rot": -60.0},
-            "j": {"x": 12.811, "y": 4.783, "rot": -60.0},
-            "k": {"x": 12.766, "y": 4.243, "rot": -120.0},
-            "l": {"x": 13.589, "y": 4.616, "rot": -120.0},
-        },
-        "cage": {
-            "left": {"x": 8.7, "y": 1.03, "rot": 180.0},
-            "middle": {"x": 8.7, "y": 2.03, "rot": 180.0},
-            "right": {"x": 8.7, "y": 3.03, "rot": 180.0},
-        },
-    },
-}
+    def __init__(self):
+        self.terrainJSON = None
+        with open(NOM_FICHIER_TERRAIN, 'r') as fichier:
+            self.terrainJSON = json.load(fichier)
+            self.poses = {}
+            for cle in self.terrainJSON:
+                transform = self.terrainJSON[cle]
+                location = transform["pos"]
+                self.poses[cle] = Pose2d(location[0], location[1], Rotation2d.fromDegrees(transform["rot"]))
+        if not self.ok():
+            raise Exception("Terrain non chargé")
+
+    def ok(self) -> bool:
+        return len(self.poses) > 0
+
+    # Reef 1 à 12
+    def getReef(self, numero : int) -> Pose2d:
+        assert(numero in range(1, 13))
+        return self.poses[self.__getPrefixeAllianceStr() + "_r" + str(numero)]
+
+    # Station 1 (gauche) à 2 (droite)
+    # Slide 1 à 9
+    def getCoralStationSlide(self, numeroStation : int, numeroSlide : int) -> Pose2d:
+        assert(numeroStation in range(1, 3))
+        assert(numeroSlide in range(1, 10))
+        return self.poses[self.__getPrefixeAllianceStr() + "_s" + str(numeroStation) + "_" + str(numeroSlide)]
+
+    def getAllCoralStationSlides(self, numeroStation : int) -> List[Pose2d]:
+        return self.__getAllPointsWithPrefix(self.__getPrefixeAllianceStr() + "_s" + str(numeroStation) + "_")
+
+    # Cage 1 à 3
+    def getCage(self, numero : int) -> Pose2d:
+        assert(numero in range(1, 4))
+        return self.poses[self.__getPrefixeAllianceStr() + "_c" + str(numero)]
+
+    def getAllRedPoints(self) -> List[Pose2d]:
+        return self.__getAllPointsWithPrefix("r_")
+
+    def getAllBluePoints(self) -> List[Pose2d]:
+        return self.__getAllPointsWithPrefix("b_")
+
+    def __getAllPointsWithPrefix(self, prefix : str) -> List[Pose2d]:
+        points : List[Pose2d] = []
+        for cle in self.poses:
+            if cle.startswith(prefix):
+                points.append(self.poses[cle])
+        return points
+
+    def __getPrefixeAllianceStr(self) -> str:
+        if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
+            return "r"
+        elif DriverStation.getAlliance() == DriverStation.Alliance.kBlue:
+            return "b"
+        else:
+            raise Exception("Pick a side")
+
+    def execute(self):
+        pass

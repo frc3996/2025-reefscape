@@ -17,7 +17,6 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-from components.reefscape import CagePositionKeys
 from components.swervedrive import SwerveDrive
 
 

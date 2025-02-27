@@ -13,7 +13,7 @@ def MmToMeters(mm : float) -> float:
 
 prefixesInteressants = tuple(["b_", "r_"])
 
-objets = {} # liste de dictionnaires
+objets = {}
 for obj in bpy.data.objects:
     if obj.name.startswith(prefixesInteressants):
         position, rotation, scale = obj.matrix_world.decompose()
