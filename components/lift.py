@@ -9,13 +9,13 @@ import wpimath.units
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 from wpilib._wpilib import Mechanism2d
-from enum import Enum
+from enum import IntEnum
 
 import constants
 
 HEIGHT_TOLERANCE = 0.05
 
-class LiftTarget(Enum):
+class LiftTarget(IntEnum):
     BASE = 0
     L1 = 1
     L2 = 2
