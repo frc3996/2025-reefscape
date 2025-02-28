@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from wpilib import DriverStation
 from wpimath.geometry import Pose2d, Rotation2d
 import wpimath.units
+import os
 
-NOM_FICHIER_TERRAIN : str = "terrain/terrain.json"
+NOM_FICHIER_TERRAIN : str = "terrain.json"
 
 FIELD_LENGTH = 17.548
 FIELD_WIDTH = 8.052
@@ -22,7 +23,8 @@ class Reefscape:
 
     def __init__(self):
         self.terrainJSON = None
-        with open(NOM_FICHIER_TERRAIN, 'r') as fichier:
+        pathFichierTerrain = os.path.join(os.path.dirname(__file__), r"..", NOM_FICHIER_TERRAIN)
+        with open(pathFichierTerrain, 'r') as fichier:
             self.terrainJSON = json.load(fichier)
             self.poses = {}
             for cle in self.terrainJSON:

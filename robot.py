@@ -355,7 +355,7 @@ class MyRobot(MagicRobot):
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
     def teleopManualMode(self):
-        # self.teleopDrive()
+        self.teleopDrive()
 
         if self.gamepad_pilote.getBButton():
             self.actionShoot.engage(self.actionShoot.TARGET_L1)
