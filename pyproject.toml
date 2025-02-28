@@ -35,3 +35,6 @@ requires = ["numpy"]
 [tool.pyright]
 reportMissingTypeStubs = false
 reportUninitializedInstanceVariable = false
+
+[tool.robotpy.pyfrc]
+isolated = true
