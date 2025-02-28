@@ -161,7 +161,7 @@ class MyRobot(MagicRobot):
             constants.CANIds.SWERVE_ROTATE_FL,
             constants.CANIds.SWERVE_CANCODER_FL,
             1,
-            rotation_zero=193,
+            rotation_zero=122,
             inverted=False,
         )
         self.drivetrain_frontRight = SwerveModule(
@@ -169,7 +169,7 @@ class MyRobot(MagicRobot):
             constants.CANIds.SWERVE_ROTATE_FR,
             constants.CANIds.SWERVE_CANCODER_FR,
             2,
-            rotation_zero=76,
+            rotation_zero=102,
             inverted=False,
         )
         self.drivetrain_backLeft = SwerveModule(
@@ -177,7 +177,7 @@ class MyRobot(MagicRobot):
             constants.CANIds.SWERVE_ROTATE_RL,
             constants.CANIds.SWERVE_CANCODER_RL,
             3,
-            rotation_zero=216,
+            rotation_zero=-100,
             inverted=False,
         )
         self.drivetrain_backRight = SwerveModule(
@@ -185,7 +185,7 @@ class MyRobot(MagicRobot):
             constants.CANIds.SWERVE_ROTATE_RR,
             constants.CANIds.SWERVE_CANCODER_RR,
             4,
-            rotation_zero=318,
+            rotation_zero=312,
             inverted=False,
         )
 
@@ -358,9 +358,7 @@ class MyRobot(MagicRobot):
             self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.2
         )
         rightX = gamepad_helper.apply_deadzone(
-            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(2)),
-            0.2,
-            # self.rightXFilter.calculate(self.gamepad_pilote.getRightX(2)), 0.2
+            self.rightXFilter.calculate(self.gamepad_pilote.getRightX()), 0.2
         )
 
         if self.gamepad_pilote.getAButton():
