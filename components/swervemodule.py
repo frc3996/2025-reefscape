@@ -34,6 +34,7 @@ import wpimath.geometry
 import wpimath.kinematics
 import wpimath.trajectory
 import wpimath.units
+from magicbot import tunable
 from phoenix6.configs import (CANcoderConfiguration, MagnetSensorConfigs,
                               MotorOutputConfigs, TalonFXConfiguration)
 from phoenix6.configs.config_groups import InvertedValue
@@ -192,6 +193,31 @@ class TurningEncoder:
 
 @final
 class SwerveModule:
+    drive_p = tunable(1.0)
+    drive_i = tunable(0.0)
+    drive_d = tunable(0.0)
+    drive_kS = tunable(0.0)
+    drive_kV = tunable(0.0)
+    drive_kA = tunable(0.0)
+
+    turn_p = tunable(1.0)
+    turn_i = tunable(0.0)
+    turn_d = tunable(0.0)
+
+    def execute(self):
+        pass
+
+    def on_enable(self):
+        self.drivePIDController = wpimath.controller.PIDController(
+            self.drive_p, self.drive_i, self.drive_d
+        )
+        self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(
+            self.drive_kS, self.drive_kV, self.drive_kA
+        )
+        self.turningPIDController = wpimath.controller.PIDController(
+            self.turn_p, self.turn_i, self.turn_d
+        )
+
     def __init__(
         self,
         driveMotorChannel: int,

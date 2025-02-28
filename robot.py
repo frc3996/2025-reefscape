@@ -40,10 +40,11 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
-from components.rikistick import RikiStick
 from components.reefscape import Reefscape
+from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionIntake, ActionShoot,
                                       ActionStow)
+from components.swervemodule import SwerveModule
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -102,7 +103,7 @@ class MyRobot(MagicRobot):
 
     # FieldLayout
     field_layout: FieldLayout
-    reefscape : Reefscape
+    reefscape: Reefscape
 
     # Vision
     limelight_vision: LimeLightVision
@@ -154,6 +155,39 @@ class MyRobot(MagicRobot):
         # NAVX
         # self.navx: AHRS = AHRS.create_spi()
         self.navx: AHRS = AHRS(AHRS.NavXComType.kUSB1)
+
+        self.drivetrain_frontLeft = SwerveModule(
+            constants.CANIds.SWERVE_DRIVE_FL,
+            constants.CANIds.SWERVE_ROTATE_FL,
+            constants.CANIds.SWERVE_CANCODER_FL,
+            1,
+            rotation_zero=193,
+            inverted=False,
+        )
+        self.drivetrain_frontRight = SwerveModule(
+            constants.CANIds.SWERVE_DRIVE_FR,
+            constants.CANIds.SWERVE_ROTATE_FR,
+            constants.CANIds.SWERVE_CANCODER_FR,
+            2,
+            rotation_zero=76,
+            inverted=False,
+        )
+        self.drivetrain_backLeft = SwerveModule(
+            constants.CANIds.SWERVE_DRIVE_RL,
+            constants.CANIds.SWERVE_ROTATE_RL,
+            constants.CANIds.SWERVE_CANCODER_RL,
+            3,
+            rotation_zero=216,
+            inverted=False,
+        )
+        self.drivetrain_backRight = SwerveModule(
+            constants.CANIds.SWERVE_DRIVE_RR,
+            constants.CANIds.SWERVE_ROTATE_RR,
+            constants.CANIds.SWERVE_CANCODER_RR,
+            4,
+            rotation_zero=318,
+            inverted=False,
+        )
 
         # PhotonVision
         # self.cam = PhotonCamera("YOUR CAMERA NAME")
