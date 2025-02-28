@@ -9,11 +9,20 @@ import wpimath.units
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 from wpilib._wpilib import Mechanism2d
+from enum import Enum
 
 import constants
 
 HEIGHT_TOLERANCE = 0.05
 
+class LiftTarget(Enum):
+    BASE = 0
+    L1 = 1
+    L2 = 2
+    L3 = 3
+    L4 = 4
+    DEPLACEMENT = 5
+    INTAKE = 6
 
 class Lift:
     kMaxSpeed = tunable(15)

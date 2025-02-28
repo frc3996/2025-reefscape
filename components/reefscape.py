@@ -43,7 +43,7 @@ class Reefscape:
         return self.poses[self.__getPrefixeAllianceStr() + "_r" + str(numero)]
 
     # Station 1 (gauche) à 2 (droite)
-    # Slide 1 à 9
+    # Slide 1 à 4
     def getCoralStationSlide(self, numeroStation : int, numeroSlide : int) -> Pose2d:
         assert(numeroStation in range(1, 3))
         assert(numeroSlide in range(1, 10))

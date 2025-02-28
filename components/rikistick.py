@@ -1,29 +1,27 @@
 import wpilib
 from magicbot import feedback, tunable
+from components.lift import LiftTarget
 
-RIKISTICK2_BUTTON_TO_REEF_MAP = {
-    2: 1,
-    1: 2,
-    9: 3,
-    7: 4,
-    11: 5,
-    6: 6,
-    10: 7,
-    16: 8,
-    15: 9,
-    14: 10,
-    5: 11,
-    3: 12
+RIKISTICK2_BUTTON_TO_REEF_MAP = { # zero-based, voir +1 ci-dessous.
+    1: 1,
+    0: 2,
+    8: 3,
+    6: 4,
+    10: 5,
+    5: 6,
+    9: 7,
+    15: 8,
+    14: 9,
+    13: 10,
+    4: 11,
+    2: 12
 }
-
-def valtest(v : int):
-    return v
 
 class RikiStick:
 
-    reefTarget = tunable(1)      # [1, 12]
-    stationTarget = tunable(1)   # [1, 2]
-    cageTarget = tunable(0)      # [1, 3]
+    reefTarget = tunable(1)                 # [1, 12]
+    stationTarget = tunable(1)              # [1, 2]
+    liftHeightTarget : LiftTarget = LiftTarget.BASE
 
     def __init__(self) -> None:
         self.joystick: wpilib.Joystick = wpilib.Joystick(5)
@@ -33,24 +31,28 @@ class RikiStick:
     @feedback
     def getCoralStationTarget(self) -> int:
         assert(self.stationTarget in range(1, 3))
-        valtest(self.stationTarget)
         return self.stationTarget
 
     @feedback
-    def getCageTarget(self) -> int: # Zero si pas de cage cible
-        assert(self.cageTarget in range(0, 4))
-        return self.cageTarget
+    def getLiftHeightTargetStr(self) -> str:
+        return self.getLiftHeightTarget().name
+
+    def getLiftHeightTarget(self) -> LiftTarget: # Zero si pas de cage cible
+        return self.liftHeightTarget
 
     @feedback
     def getReefTarget(self) -> int:
         assert(self.reefTarget in range(1, 13))
         return self.reefTarget
+    
+    def killSwitch(self) -> bool:
+        return self.rikistick1.getRawButton(5)
 
     def execute(self):
         # Reefs
         if (not self.rikistick2 is None) and (self.rikistick2.getButtonCount() != 0):
             for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
-                if self.rikistick2.getRawButton(button):
+                if self.rikistick2.getRawButton(button + 1):
                     self._reefTarget = RIKISTICK2_BUTTON_TO_REEF_MAP[button]
                     break
 
