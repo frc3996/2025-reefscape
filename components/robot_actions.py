@@ -14,7 +14,7 @@ from common.path_helper import PathHelper
 from components.chariot import Chariot
 from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
-from components.lift import Lift
+from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.swervedrive import SwerveDrive
@@ -76,23 +76,22 @@ class ActionShoot(StateMachine):
     actionIntakeSortie: ActionIntakeSortie
     actionStow: ActionStow
     chariot: Chariot
-    TARGET_L1 = 0
-    TARGET_L2 = 1
-    TARGET_L3 = 2
-    TARGET_L4 = 3
-    current_target = -1
+    current_target : LiftTarget = LiftTarget.BASE
     ready_to_shoot = False
     TARGETS = {
-        TARGET_L1: Lift.go_level1,
-        TARGET_L2: Lift.go_level2,
-        TARGET_L3: Lift.go_level3,
-        TARGET_L4: Lift.go_level4,
+        LiftTarget.DEPLACEMENT: Lift.go_deplacement,
+        LiftTarget.L1: Lift.go_level1,
+        LiftTarget.L2: Lift.go_level2,
+        LiftTarget.L3: Lift.go_level3,
+        LiftTarget.L4: Lift.go_level4,
+        LiftTarget.INTAKE: Lift.go_intake,
     }
 
     @override
     def engage(
         self, target, initial_state: StateRef | None = None, force: bool = False
     ) -> None:
+        assert(target in self.TARGETS)
         self.current_target = target
         return super().engage(initial_state, force)
 
@@ -100,7 +99,7 @@ class ActionShoot(StateMachine):
     def move_lift(self):
         print("ActionShoot", "move_lift")
         self.ready_to_shoot = False
-        if self.current_target not in range(0, 4):
+        if self.current_target not in self.TARGETS:
             print("INVALID TARGET FOR ActionShoot")
             self.done()
 

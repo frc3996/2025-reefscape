@@ -37,7 +37,7 @@ from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
-from components.lift import Lift
+from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.pixy import Pixy
 from components.reefscape import Reefscape
@@ -392,13 +392,13 @@ class MyRobot(MagicRobot):
         self.teleopDrive()
 
         if self.gamepad_pilote.getBButton():
-            self.actionShoot.engage(self.actionShoot.TARGET_L1)
+            self.actionShoot.engage(LiftTarget.L1)
         elif self.gamepad_pilote.getAButton():
-            self.actionShoot.engage(self.actionShoot.TARGET_L2)
+            self.actionShoot.engage(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
-            self.actionShoot.engage(self.actionShoot.TARGET_L3)
+            self.actionShoot.engage(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
-            self.actionShoot.engage(self.actionShoot.TARGET_L4)
+            self.actionShoot.engage(LiftTarget.L4)
         elif self.gamepad_pilote.getLeftBumper():
             self.actionIntake.engage()
         elif self.gamepad_pilote.getRightBumper():
