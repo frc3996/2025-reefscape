@@ -17,12 +17,11 @@ import constants
 HEIGHT_TOLERANCE = 0.05
 
 class LiftTarget(IntEnum):
-    BASE = 0
+    DEPLACEMENT = 0
     L1 = 1
     L2 = 2
     L3 = 3
     L4 = 4
-    DEPLACEMENT = 5
     INTAKE = 6
 
 class Lift:

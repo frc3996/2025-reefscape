@@ -75,7 +75,7 @@ class ActionShoot(StateMachine):
     actionIntakeSortie: ActionIntakeSortie
     actionStow: ActionStow
     chariot: Chariot
-    current_target: LiftTarget = LiftTarget.BASE
+    current_target: LiftTarget = LiftTarget.DEPLACEMENT
 
     def __init__(self):
         self.ready_to_shoot: bool = False
