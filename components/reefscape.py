@@ -2,7 +2,7 @@ import json
 from typing import List
 from dataclasses import dataclass
 from wpilib import DriverStation
-from wpimath.geometry import Pose2d, Rotation2d
+from wpimath.geometry import Pose2d, Rotation2d, Translation2d, Transform2d
 import wpimath.units
 import os
 
@@ -10,6 +10,8 @@ NOM_FICHIER_TERRAIN : str = "terrain.json"
 
 FIELD_LENGTH = 17.548
 FIELD_WIDTH = 8.052
+
+ROBOT_HALF_LENGTH = wpimath.units.inchesToMeters(17) # INcluant le bumper
 
 class Reefscape:
 
@@ -21,8 +23,12 @@ class Reefscape:
             self.poses = {}
             for cle in self.terrainJSON:
                 transform = self.terrainJSON[cle]
-                location = transform["pos"]
-                self.poses[cle] = Pose2d(location[0], location[1], Rotation2d.fromDegrees(transform["rot"]))
+                locationJSON = transform["pos"]
+                rotation = Rotation2d.fromDegrees(transform["rot"])
+                offsetRobot = Translation2d(ROBOT_HALF_LENGTH * rotation.cos(), ROBOT_HALF_LENGTH * rotation.sin())
+                location = Translation2d(float(locationJSON[0]) + offsetRobot.x,
+                                         float(locationJSON[1]) + offsetRobot.y)
+                self.poses[cle] = Pose2d(location, rotation.rotateBy(Rotation2d.fromDegrees(180)))
         if not self.ok():
             raise Exception("Terrain non chargé")
 
