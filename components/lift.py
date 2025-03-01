@@ -1,3 +1,4 @@
+from doctest import master
 import math
 
 import rev
@@ -25,21 +26,23 @@ class LiftTarget(IntEnum):
     INTAKE = 6
 
 class Lift:
-    kMaxSpeed = tunable(15)
-    kMaxAccel = tunable(15)
+    kMaxSpeed = tunable(1.0)
+    kMaxAccel = tunable(1.0)
 
     gamepad_pilote: wpilib.XboxController
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDepart = wpimath.units.inchesToMeters(7)
-    hauteurDeplacement = tunable(wpimath.units.feetToMeters(1.250) - hauteurDepart)
-    hauteurIntake = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
-    hauteurLevel1 = tunable(wpimath.units.feetToMeters(2.500) - hauteurDepart)
-    hauteurLevel2 = tunable(wpimath.units.feetToMeters(5.000) - hauteurDepart)
-    hauteurLevel3 = tunable(wpimath.units.feetToMeters(7.500) - hauteurDepart)
-    hauteurLevel4 = tunable(wpimath.units.feetToMeters(10.000) - hauteurDepart)
-    hauteurMargeErreur = tunable(0.01)
+    hauteurDeplacement = tunable(0.4)
+    hauteurIntake = tunable(0.6)
+    hauteurLevel1 = tunable(0.55)
+    hauteurLevel2 = tunable(0.82)
+    hauteurLevel3 = tunable(1.28)
+    hauteurLevel4 = tunable(1.9)
+
+    lift_p = tunable(12.0)
+    lift_i = tunable(0.0)
+    lift_d = tunable(0.0)
 
     # hauteur cible
     hauteurCible = 0  # TODO quelque chose d'intelligent ici
@@ -58,9 +61,9 @@ class Lift:
 
         self.liftPIDController: wpimath.controller.ProfiledPIDController = (
             wpimath.controller.ProfiledPIDController(
-                10,
-                0,
-                0,
+                self.lift_p,
+                self.lift_i,
+                self.lift_d,
                 wpimath.trajectory.TrapezoidProfile.Constraints(
                     self.kMaxSpeed, self.kMaxAccel
                 ),
@@ -68,30 +71,46 @@ class Lift:
         )
         self.liftPIDController.setTolerance(HEIGHT_TOLERANCE)
 
+        masterConfig = rev.SparkBaseConfig()
+        _ = masterConfig.setIdleMode(masterConfig.IdleMode.kBrake)
+        _ = masterConfig.inverted(True)
+        _ = self.liftMaster.configure(
+            masterConfig,
+            rev.SparkMax.ResetMode.kResetSafeParameters,
+            rev.SparkMax.PersistMode.kPersistParameters,
+        )
+
         slaveConfig = rev.SparkBaseConfig()
-        _ = slaveConfig.follow(constants.CANIds.LIFT_MOTOR_MAIN, False)
+        _ = slaveConfig.follow(constants.CANIds.LIFT_MOTOR_MAIN, True)
         _ = self.liftSlave.configure(
             slaveConfig,
             rev.SparkMax.ResetMode.kResetSafeParameters,
             rev.SparkMax.PersistMode.kPersistParameters,
         )
 
-        self.limitswitchZero: wpilib.DigitalInput = wpilib.DigitalInput(
-            constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1_AND_2
+        self.limitswitchZero_1: wpilib.DigitalInput = wpilib.DigitalInput(
+            constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_1
         )
-        # self.zero_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2)
-        self.limitswitchSafety: wpilib.DigitalInput = wpilib.DigitalInput(
-            constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_1_AND_2
+        self.limitswitchZero_2: wpilib.DigitalInput = wpilib.DigitalInput(
+            constants.DigitalIO.LIFT_ZERO_LIMITSWITCH_2
         )
-        # self.safety_limitswitch_2 = wpilib.DigitalInput(constants.DigitalIO.LIFT_SAFETY_LIMITSWITCH_2)
 
         self.stringEncoder: wpilib.Encoder = wpilib.Encoder(
             constants.DigitalIO.LIFT_STRING_ENCODER_A,
             constants.DigitalIO.LIFT_STRING_ENCODER_B,
         )
         self.stringEncoder.setDistancePerPulse(1 / 6340)
-        self.stringEncoder.setReverseDirection(True)
+        self.stringEncoder.setReverseDirection(False)
         self.stringEncoder.reset()
+
+    def on_enable(self):
+        self.liftPIDController.setP(self.lift_p)
+        self.liftPIDController.setI(self.lift_i)
+        self.liftPIDController.setD(self.lift_d)
+        self.liftPIDController.setConstraints(
+            wpimath.trajectory.TrapezoidProfile.Constraints(
+                    self.kMaxSpeed, self.kMaxAccel
+        ),)
 
     def go_intake(self):
         self.__aller_a_hauteur(self.hauteurIntake)
@@ -126,8 +145,12 @@ class Lift:
     def get_hauteur_cible(self) -> float:
         return self.hauteurCible
 
+    @feedback
     def atGoal(self) -> bool:
         return self.liftPIDController.atGoal()
+
+    def atZero(self) -> bool:
+        return not self.limitswitchZero_1.get() or not self.limitswitchZero_2.get()
 
     def execute(self):
         """
@@ -137,21 +160,12 @@ class Lift:
         currentHeight = self.get_lift_height()
         targetHeight = self.get_hauteur_cible()
 
-        if self.limitswitchSafety.get() and targetHeight > currentHeight:
-            print(f"safety {self.limitswitchSafety.get()}")
-            # Stop movement
-            targetHeight = currentHeight
-            self.liftPIDController.reset(currentHeight)
-
-        if self.limitswitchZero.get():
-            print(f"zero {self.limitswitchZero.get()}")
-            # Reset encoder at zero
+        if currentHeight <= 0 and targetHeight <= 0 and not self.atZero():
+            self.liftMaster.set(-0.05)
+        elif self.atZero() and targetHeight <= 0:
+            self.liftMaster.set(0)
             self.stringEncoder.reset()
-            currentHeight = 0
-            # Stop movement
-            targetHeight = 0
-            self.liftPIDController.reset(currentHeight)
-
-        liftOutput = self.liftPIDController.calculate(currentHeight, targetHeight)
-
-        self.liftMaster.set(liftOutput / self.kMaxSpeed)
+            self.liftPIDController.reset(0)
+        else:
+            liftOutput = self.liftPIDController.calculate(currentHeight, targetHeight)
+            self.liftMaster.set(liftOutput / self.kMaxSpeed)

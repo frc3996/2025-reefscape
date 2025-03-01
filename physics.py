@@ -215,18 +215,18 @@ class LiftSimulator:
 
         # Sim hardware
         self.limitswitchZeroSim = wpilib.simulation.DIOSim(
-            self.robot.lift.limitswitchZero
+            self.robot.lift.limitswitchZero_1
         )
-        self.limitswitchSafetySwitch = wpilib.simulation.DIOSim(
-            self.robot.lift.limitswitchSafety
-        )
+        # self.limitswitchSafetySwitch = wpilib.simulation.DIOSim(
+        #     self.robot.lift.limitswitchSafety
+        # )
         self.stringEncoderSim: wpilib.simulation.EncoderSim = (
             wpilib.simulation.EncoderSim(self.robot.lift.stringEncoder)
         )
 
         # Initial state for limitswitches
         self.limitswitchZeroSim.setValue(False)
-        self.limitswitchSafetySwitch.setValue(False)
+        # self.limitswitchSafetySwitch.setValue(False)
 
         self.elevatorRoot = self.mech2d.getRoot("Elevator Root", 1.5, 0)
         self.elevatorMech2d = self.elevatorRoot.appendLigament(

@@ -27,6 +27,7 @@ class Intake:
         self.output_motor = rev.SparkMax(
             constants.CANIds.INTAKE_OUTPUT_MOTOR, rev.SparkMax.MotorType.kBrushless
         )
+        self.output_motor.setInverted(True)
 
         self.beam_sensor = wpilib.AnalogInput(constants.AnalogIO.INTAKE_BEAM_SENSOR)
 
@@ -98,7 +99,7 @@ class ActionIntakeEntree(StateMachine):
             self.next_state("finish")
         else:
             print("WWEEE gooOOTT Thiss")
-            self.chariot.move_intake_back_for_intake()
+            # self.chariot.move_intake_back_for_intake()
             self.intake.set_intake_speed(self.VITESSE_MOTEUR)
             self.intake.set_output_speed(-(self.VITESSE_MOTEUR / 4))
 
@@ -109,9 +110,9 @@ class ActionIntakeEntree(StateMachine):
 
 class ActionIntakeSortie(StateMachine):
     intake: Intake
-    VITESSE_MOTEUR: float = 0.25
+    VITESSE_MOTEUR: float = 1.0
 
-    @timed_state(first=True, duration=0.5, must_finish=True, next_state="finish")
+    @timed_state(first=True, duration=1, must_finish=True, next_state="finish")
     def intakeFinirSortie(self):
         self.intake.set_intake_speed(self.VITESSE_MOTEUR)
         self.intake.set_output_speed(self.VITESSE_MOTEUR)

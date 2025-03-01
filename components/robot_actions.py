@@ -16,7 +16,6 @@ from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
-from components.pixy import Pixy
 from components.swervedrive import SwerveDrive
 
 
@@ -96,20 +95,21 @@ class ActionShoot(StateMachine):
         return super().engage(initial_state, force)
 
     @state(first=True)
-    def move_lift(self):
+    def move_lift(self, initial_call: bool):
         print("ActionShoot", "move_lift")
         self.ready_to_shoot = False
         if self.current_target not in self.TARGETS:
             print("INVALID TARGET FOR ActionShoot")
             self.done()
 
-        self.TARGETS[self.current_target](self.lift)
-        if self.lift.atGoal() and self.chariot.get_chariot_front_limit_switch():
+        if initial_call:
+            self.TARGETS[self.current_target](self.lift)
+            return
+
+        if self.lift.atGoal():
             self.next_state("wait_release")
-        elif not self.lift.atGoal():
+        else:
             print("ActionShoot: Waiting for lift")
-        elif not self.chariot.get_chariot_front_limit_switch():
-            print("ActionShoot: Waiting for chariot")
 
     @state
     def wait_release(self):

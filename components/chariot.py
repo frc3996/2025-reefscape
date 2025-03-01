@@ -16,7 +16,7 @@ CURRENT_LIMIT_AMP = 5
 
 class Chariot:
     chariot_speed = tunable(3)
-    safe_lift_height = tunable(wpimath.units.inchesToMeters(10))
+    safe_lift_height = tunable(0.1)
     __chariot_cmd = will_reset_to(0)
     __current_target = will_reset_to(TARGET_FRONT)
     __last_target = TARGET_FRONT
@@ -107,6 +107,6 @@ class Chariot:
             else:
                 self.__chariot_cmd = -self.chariot_speed
 
-        _ = self.chariot_motor_controller.setReference(
-            self.__chariot_cmd, self.chariot_motor.ControlType.kVelocity
-        )
+        # _ = self.chariot_motor_controller.setReference(
+        #     self.__chariot_cmd, self.chariot_motor.ControlType.kVelocity
+        # )

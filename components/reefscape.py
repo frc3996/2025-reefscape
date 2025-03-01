@@ -11,14 +11,6 @@ NOM_FICHIER_TERRAIN : str = "terrain.json"
 FIELD_LENGTH = 17.548
 FIELD_WIDTH = 8.052
 
-# Heights for each level
-CORAL_LEVEL = {
-    "l1": wpimath.units.feetToMeters(2.500),
-    "l2": wpimath.units.feetToMeters(5.000),
-    "l3": wpimath.units.feetToMeters(7.500),
-    "l4": wpimath.units.feetToMeters(1.000),
-}
-
 class Reefscape:
 
     def __init__(self):
