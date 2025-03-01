@@ -14,6 +14,7 @@ SWERVES (FALCONS x4) LIME LIGHT
 
 import math
 from typing import override
+from datetime import datetime
 
 import ntcore
 import rev
@@ -249,6 +250,10 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
+        if self.rikiStick.isEditMode():
+            self.teleopTerrainEditMode()
+            return
+
         # if not self.gamepad_copilote.getRawButton(1):
         self.teleopDrive()
         self.teleopManualMode()
@@ -258,6 +263,43 @@ class MyRobot(MagicRobot):
         # self.teleopClimb()
         # self.teleopIntake()
         # self.teleopCycle()
+
+    def teleopTerrainEditMode(self):
+        assert(self.rikiStick.isEditMode())
+        self.teleopDrive()
+        if self.rikiStick.getKillSwitch():
+            self.rikiStick.disableEditMode()
+            self.reefscape.save("terrain-" + datetime.now().strftime("%Y-%m-%d.%H.%M.%S") + ".json")
+            return
+        team = self.rikiStick.getEditModeTeam()
+        assert(team != "")
+        # Reefs        
+        for i in range(1, 13):
+            if self.rikiStick.isReefButtonPressed(i):
+                self.reefscape.setReefPose(team, i, self.drivetrain.getPose())
+                return
+        # Station slides
+        for i in range(1, 3):
+            if self.rikiStick.isStationButtonPressed(i):
+                # 4 slides = A, B, X, Y
+                slideID = 0
+                if self.gamepad_pilote.getAButton():
+                    slideID = 1
+                elif self.gamepad_pilote.getBButton():
+                    slideID = 2
+                elif self.gamepad_pilote.getXButton():
+                    slideID = 3
+                elif self.gamepad_pilote.getYButton():
+                    slideID = 4
+
+                if slideID != 0:
+                    self.reefscape.setStationSlidePose(team, i, slideID, self.drivetrain.getPose())
+                    return
+        # Cages
+        for i in range(1, 4):
+            if self.rikiStick.isCageButtonPressed(i):
+                self.reefscape.setCagePose(team, i, self.drivetrain.getPose())
+                return
 
     def teleopCycle(self):
         leftY = gamepad_helper.apply_deadzone(

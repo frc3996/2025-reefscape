@@ -19,15 +19,26 @@ RIKISTICK2_BUTTON_TO_REEF_MAP = { # zero-based, voir +1 ci-dessous.
 
 class RikiStick:
 
+    # Terrain edit mode ("r" pour red terrain, "b" pour blue terrain, "" pour pas d'edit)
+    terrainEditMode = tunable("")
     reefTarget = tunable(1)                 # [1, 12]
     stationTarget = tunable(1)              # [1, 2]
-    liftHeightTarget : LiftTarget = LiftTarget.BASE
+    liftHeightTarget : LiftTarget = LiftTarget.DEPLACEMENT
     cageTarget = tunable(0)
 
     def __init__(self) -> None:
         self.joystick: wpilib.Joystick = wpilib.Joystick(5)
         self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
         self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
+
+    def isEditMode(self) -> bool:
+        return self.terrainEditMode != ""
+
+    def disableEditMode(self):
+        self.terrainEditMode = ""
+
+    def getEditModeTeam(self) -> str:
+        return self.terrainEditMode
 
     @feedback
     def getCoralStationTarget(self) -> int:
@@ -49,8 +60,27 @@ class RikiStick:
         assert(self.reefTarget in range(1, 13))
         return self.reefTarget
     
-    def killSwitch(self) -> bool:
+    def getKillSwitch(self) -> bool:
         return self.rikistick1.getRawButton(5)
+    
+    def isReefButtonPressed(self, reef: int) -> bool: # reef: [1, 12]
+        for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
+            if self.rikistick2.getRawButton(button + 1):
+                if RIKISTICK2_BUTTON_TO_REEF_MAP[button] == reef:
+                    return True
+        return False
+
+    def isStationButtonPressed(self, station: int) -> bool: # station: [1, 2]
+        return self.rikistick1.getRawButton(station)
+
+    def isCageButtonPressed(self, cage: int) -> bool: # cage: [1, 3]
+        if cage == 1 and self.rikistick1.getRawButtonPressed(14):
+            return True
+        elif cage == 2 and self.rikistick1.getRawButtonPressed(15):
+            return True
+        elif cage == 3 and self.rikistick1.getRawButtonPressed(16):
+            return True
+        return False
 
     def execute(self):
         # Reefs
@@ -62,17 +92,15 @@ class RikiStick:
 
         if (not self.rikistick1 is None) and (self.rikistick1.getButtonCount() != 0):
             # Coral station
-            if self.rikistick1.getRawButton(1):
-                self.stationTarget = 1
-            elif self.rikistick1.getRawButton(2):
-                self.stationTarget = 2
+            for i in range(1, 3):
+                if self.isStationButtonPressed(i):
+                    self.stationTarget = i
+                    break
             # Cage position
-            if self.rikistick1.getRawButtonPressed(14):
-                self.cageTarget = 1
-            if self.rikistick1.getRawButtonPressed(15):
-                self.cageTarget = 2
-            if self.rikistick1.getRawButtonPressed(16):
-                self.cageTarget = 3
+            for i in range(1, 4):
+                if self.isCageButtonPressed(i):
+                    self.cageTarget = i
+                    break
 
     def execute_sim(self):
         if self.joystick is None or self.joystick.getButtonCount() == 0:
