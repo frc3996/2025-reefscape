@@ -22,6 +22,7 @@ class RikiStick:
     reefTarget = tunable(1)                 # [1, 12]
     stationTarget = tunable(1)              # [1, 2]
     liftHeightTarget : LiftTarget = LiftTarget.BASE
+    cageTarget = tunable(0)
 
     def __init__(self) -> None:
         self.joystick: wpilib.Joystick = wpilib.Joystick(5)
@@ -37,8 +38,11 @@ class RikiStick:
     def getLiftHeightTargetStr(self) -> str:
         return self.getLiftHeightTarget().name
 
-    def getLiftHeightTarget(self) -> LiftTarget: # Zero si pas de cage cible
+    def getLiftHeightTarget(self) -> LiftTarget:
         return self.liftHeightTarget
+
+    def getCageTarget(self) -> int: # Zero si pas de cage cible
+        return self.cageTarget
 
     @feedback
     def getReefTarget(self) -> int:
@@ -53,22 +57,22 @@ class RikiStick:
         if (not self.rikistick2 is None) and (self.rikistick2.getButtonCount() != 0):
             for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
                 if self.rikistick2.getRawButton(button + 1):
-                    self._reefTarget = RIKISTICK2_BUTTON_TO_REEF_MAP[button]
+                    self.reefTarget = RIKISTICK2_BUTTON_TO_REEF_MAP[button]
                     break
 
         if (not self.rikistick1 is None) and (self.rikistick1.getButtonCount() != 0):
             # Coral station
             if self.rikistick1.getRawButton(1):
-                self._coralStation = 1
+                self.stationTarget = 1
             elif self.rikistick1.getRawButton(2):
-                self._coralStation = 2
+                self.stationTarget = 2
             # Cage position
             if self.rikistick1.getRawButtonPressed(14):
-                self._cagePosition = 1
+                self.cageTarget = 1
             if self.rikistick1.getRawButtonPressed(15):
-                self._cagePosition = 2
+                self.cageTarget = 2
             if self.rikistick1.getRawButtonPressed(16):
-                self._cagePosition = 3
+                self.cageTarget = 3
 
     def execute_sim(self):
         if self.joystick is None or self.joystick.getButtonCount() == 0:
@@ -76,12 +80,12 @@ class RikiStick:
 
         for i in range(1, 13):
             if self.joystick.getRawButton(i):
-                self._reefPosition = i
+                self.reefTarget = i
                 break
         if self.joystick.getRawButton(13):
-            self._coralStation = 1
+            self.stationTarget = 1
         elif self.joystick.getRawButton(14):
-            self._coralStation = 2
+            self.stationTarget = 2
 
         # # CagePosition
         # if self.joystick.getRawButton(15):
