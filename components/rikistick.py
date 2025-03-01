@@ -20,7 +20,7 @@ RIKISTICK2_BUTTON_TO_REEF_MAP = { # zero-based, voir +1 ci-dessous.
 class RikiStick:
 
     # Terrain edit mode ("r" pour red terrain, "b" pour blue terrain, "" pour pas d'edit)
-    terrainEditMode = tunable("")
+    editMode_0Non_1Red_2Blue = tunable(0)
     reefTarget = tunable(1)                 # [1, 12]
     stationTarget = tunable(1)              # [1, 2]
     liftHeightTarget : LiftTarget = LiftTarget.DEPLACEMENT
@@ -32,13 +32,18 @@ class RikiStick:
         self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
 
     def isEditMode(self) -> bool:
-        return self.terrainEditMode != ""
+        return self.editMode_0Non_1Red_2Blue != 0
 
     def disableEditMode(self):
-        self.terrainEditMode = ""
+        self.editMode_0Non_1Red_2Blue = 0
 
     def getEditModeTeam(self) -> str:
-        return self.terrainEditMode
+        match self.editMode_0Non_1Red_2Blue:
+            case 1:
+                return "r"
+            case 2:
+                return "b"
+        return ""
 
     @feedback
     def getCoralStationTarget(self) -> int:
