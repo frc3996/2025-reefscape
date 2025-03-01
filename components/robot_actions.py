@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import override
+from typing import Callable, override
 
 import wpilib
 from magicbot import StateMachine, state, timed_state, tunable
@@ -75,24 +75,23 @@ class ActionShoot(StateMachine):
     actionIntakeSortie: ActionIntakeSortie
     actionStow: ActionStow
     chariot: Chariot
-    current_target : LiftTarget = LiftTarget.BASE
-    ready_to_shoot = False
-    TARGETS = {
-        LiftTarget.DEPLACEMENT: Lift.go_deplacement,
-        LiftTarget.L1: Lift.go_level1,
-        LiftTarget.L2: Lift.go_level2,
-        LiftTarget.L3: Lift.go_level3,
-        LiftTarget.L4: Lift.go_level4,
-        LiftTarget.INTAKE: Lift.go_intake,
-    }
+    current_target: LiftTarget = LiftTarget.BASE
 
-    @override
-    def engage(
-        self, target, initial_state: StateRef | None = None, force: bool = False
-    ) -> None:
-        assert(target in self.TARGETS)
+    def __init__(self):
+        self.ready_to_shoot: bool = False
+        self.TARGETS: dict[LiftTarget, Callable[[Lift], None]] = {
+            LiftTarget.DEPLACEMENT: Lift.go_deplacement,
+            LiftTarget.L1: Lift.go_level1,
+            LiftTarget.L2: Lift.go_level2,
+            LiftTarget.L3: Lift.go_level3,
+            LiftTarget.L4: Lift.go_level4,
+            LiftTarget.INTAKE: Lift.go_intake,
+        }
+
+    def start(self, target: LiftTarget) -> None:
+        assert target in self.TARGETS
         self.current_target = target
-        return super().engage(initial_state, force)
+        return super().engage()
 
     @state(first=True)
     def move_lift(self, initial_call: bool):
@@ -117,7 +116,7 @@ class ActionShoot(StateMachine):
         self.ready_to_shoot = True
 
     @state(must_finish=True)
-    def shoot_object(self, initial_call):
+    def shoot_object(self, initial_call: bool):
         print("ActionShoot", "shoot_object")
         if initial_call:
             self.actionIntakeSortie.engage()
@@ -125,6 +124,7 @@ class ActionShoot(StateMachine):
         if not self.actionIntakeSortie.is_executing:
             self.done()
 
+    @override
     def done(self) -> None:
         print("ActionShoot", "done")
         if self.ready_to_shoot:

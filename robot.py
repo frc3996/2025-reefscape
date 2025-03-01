@@ -250,98 +250,105 @@ class MyRobot(MagicRobot):
     @override
     def teleopPeriodic(self) -> None:
         # if not self.gamepad_copilote.getRawButton(1):
+        self.teleopDrive()
         self.teleopManualMode()
         # return
 
-        # self.teleopDrive()
         # self.teleopLift()
         # self.teleopClimb()
         # self.teleopIntake()
         # self.teleopCycle()
 
-    # def teleopCycle(self):
-    #     leftY = gamepad_helper.apply_deadzone(
-    #         self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.1
-    #     )
-    #     leftX = gamepad_helper.apply_deadzone(
-    #         self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.1
-    #     )
-    #     rightX = gamepad_helper.apply_deadzone(
-    #         self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(3)),
-    #         0.1,
-    #     )
+    def teleopCycle(self):
+        leftY = gamepad_helper.apply_deadzone(
+            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.1
+        )
+        leftX = gamepad_helper.apply_deadzone(
+            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.1
+        )
+        rightX = gamepad_helper.apply_deadzone(
+            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(3)),
+            0.1,
+        )
 
-    #     # Autonomous cycling
-    #     if self.gamepad_pilote.getAButton():
-    #         self.actionCycle.engage()
-    #     elif self.gamepad_pilote.getAButtonReleased():
-    #         self.actionCycle.done()
+        # Autonomous cycling
+        if self.gamepad_pilote.getAButton():
+            self.actionCycle.engage()
+        elif self.gamepad_pilote.getAButtonReleased():
+            self.actionCycle.done()
 
-    #     # Intake coral
-    #     if self.gamepad_pilote.getRawAxis(2) > 0.5:
-    #         self.actionIntakeEntree.engage()
-    #     elif self.actionIntakeEntree.is_executing:
-    #         self.actionIntakeEntree.done()
+        # Intake coral
+        if self.gamepad_pilote.getRawAxis(2) > 0.5:
+            self.actionIntakeEntree.engage()
+        elif self.actionIntakeEntree.is_executing:
+            self.actionIntakeEntree.done()
 
-    #     # Deposit coral
-    #     if self.gamepad_pilote.getRawAxis(5) > 0.5:
-    #         self.actionIntakeSortie.engage()
-    #     elif self.actionIntakeSortie.is_executing:
-    #         self.actionIntakeSortie.done()
+        # Deposit coral
+        if self.gamepad_pilote.getRawAxis(5) > 0.5:
+            self.actionIntakeSortie.engage()
+        elif self.actionIntakeSortie.is_executing:
+            self.actionIntakeSortie.done()
 
-    #     # Coral level
-    #     if abs(self.gamepad_pilote.getPOV() - 0) < 5:
-    #         # LEVEL 4
-    #         pass
-    #     elif abs(self.gamepad_pilote.getPOV() - 270) < 5:
-    #         # LEVEL 3
-    #         pass
-    #     elif abs(self.gamepad_pilote.getPOV() - 90) < 5:
-    #         # LEVEL 2
-    #         pass
-    #     elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
-    #         # LEVEL 2
-    #         pass
+        # Coral level
+        if abs(self.gamepad_pilote.getPOV() - 0) < 5:
+            # LEVEL 4
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 270) < 5:
+            # LEVEL 3
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 90) < 5:
+            # LEVEL 2
+            pass
+        elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
+            # LEVEL 2
+            pass
 
-    #     # Climb
-    #     if self.gamepad_pilote.getLeftBumper():
-    #         # Climb deploy
-    #         pass
-    #     if self.gamepad_pilote.getRightBumper():
-    #         # Climb climb
-    #         pass
+        # Climb
+        if self.gamepad_pilote.getLeftBumper():
+            # Climb deploy
+            pass
+        if self.gamepad_pilote.getRightBumper():
+            # Climb climb
+            pass
 
-    #     xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
-    #     ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
-    #     rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
+        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
+        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
-    #     self.drivetrain.drive(xSpeed, ySpeed, rot, True)
+        self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
-    # def teleopIntake(self):
-    #     if self.gamepad_pilote.getAButton():
-    #         self.actionIntakeEntree.engage()
-    #     if self.gamepad_pilote.getBButton():
-    #         self.actionIntakeSortie.engage()
-    #     else:
-    #         self.actionClimb.done()
+    def teleopIntake(self):
+        if self.gamepad_pilote.getAButton():
+            self.actionIntakeEntree.engage()
+        if self.gamepad_pilote.getBButton():
+            self.actionIntakeSortie.engage()
+        else:
+            self.actionClimb.done()
 
-    # def teleopClimb(self):
-    #     if self.gamepad_pilote.getAButton():
-    #         self.actionClimb.engage()
-    #     elif self.gamepad_pilote.getAButtonReleased():
-    #         self.actionClimb.done()
+    def teleopClimb(self):
+        if self.gamepad_pilote.getAButton():
+            self.actionClimb.engage()
+        elif self.gamepad_pilote.getAButtonReleased():
+            self.actionClimb.done()
 
-    # def teleopLift(self):
-    #     if self.gamepad_pilote.getAButton():
-    #         self.lift.go_intake()
-    #     elif self.gamepad_pilote.getXButton():
-    #         self.lift.go_level1()
-    #     elif self.gamepad_pilote.getYButton():
-    #         self.lift.go_level2()
-    #     elif self.gamepad_pilote.getBButton():
-    #         self.lift.go_level3()
-    #     else:
-    #         self.lift.go_deplacement()
+    def teleopLift(self):
+        if self.gamepad_pilote.getAButton():
+            self.lift.go_intake()
+        elif self.gamepad_pilote.getXButton():
+            self.lift.go_level1()
+        elif self.gamepad_pilote.getYButton():
+            self.lift.go_level2()
+        elif self.gamepad_pilote.getBButton():
+            self.lift.go_level3()
+        elif self.gamepad_pilote.getStartButton():
+            self.lift.go_deplacement()
+
+        if self.gamepad_pilote.getLeftBumper():
+            self.chariot.move_back()
+        elif self.gamepad_pilote.getRightBumper():
+            self.chariot.move_front()
+        else:
+            self.chariot.stop()
 
     def teleopDrive(self):
         # TODO
@@ -383,20 +390,18 @@ class MyRobot(MagicRobot):
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
     def teleopManualMode(self):
-        self.teleopDrive()
-
         if self.gamepad_pilote.getBButton():
             # self.lift.go_level1()
-            self.actionShoot.engage(LiftTarget.L1)
+            self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getAButton():
             # self.lift.go_level2()
-            self.actionShoot.engage(LiftTarget.L2)
+            self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
             # self.lift.go_level3()
-            self.actionShoot.engage(LiftTarget.L3)
+            self.actionShoot.start(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
             # self.lift.go_level4()
-            self.actionShoot.engage(LiftTarget.L4)
+            self.actionShoot.start(LiftTarget.L4)
         elif self.gamepad_pilote.getLeftBumper():
             self.actionIntake.engage()
         elif self.gamepad_pilote.getRightBumper():
