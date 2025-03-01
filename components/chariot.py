@@ -57,10 +57,16 @@ class Chariot:
         self._chariot_speed = -self.kChariotSpeedMax
 
     def move_front(self):
+        # Only for testing
         self._chariot_speed = self.kChariotSpeedMax
 
     def stop(self):
+        # Only for testing
         self._chariot_speed = 0
+
+    @feedback
+    def motorCurrent(self):
+        return self.chariot_motor.getOutputCurrent()
 
     def execute(self):
         """
