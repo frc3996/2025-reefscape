@@ -43,21 +43,19 @@ class Chariot:
         self._chariot_speed: int = 0
 
     def move_back(self):
+        # Only allow moving back when going toward intake height and that we're near it
         if self.lift.get_hauteur_cible() != self.lift.hauteurIntake:
             # We're not moving where we need
-            print("Cancelling to avoid head crash")
             return
 
         if abs(self.lift.get_lift_height() - self.lift.hauteurIntake) > 0.20:
-            # We're wayyyy to far
-            print("Cancelling to avoid head crash")
+            # Allow moving back if we're near the intake height
             return
 
         # Should be good..
         self._chariot_speed = -self.kChariotSpeedMax
 
     def move_front(self):
-        # Only for testing
         self._chariot_speed = self.kChariotSpeedMax
 
     def stop(self):
@@ -75,14 +73,22 @@ class Chariot:
         """
         current = self.chariot_motor.getOutputCurrent()
 
+        # If lift is moving away from inake position, make sure it's moving back to the front
+        if self.lift.get_hauteur_cible() != self.lift.hauteurIntake:
+            # We move back to the front
+            self.move_front()
+            # FALLTHROUGH
+
+        # Safety, don't move if we're at the bottom or at the top
         if self.lift.atZero():
-            # Don't you date move
+            # Don't you dare move back or front
             self.chariot_motor.set(0)
             return
 
-        if not self.lift.atGoal():
-            # We move back to the front
-            self.move_front()
+        if self.lift.get_hauteur_cible() >= self.lift.hauteurLevel4 - 0.10:
+            # Don't you dare move back or front
+            self.chariot_motor.set(0)
+            return
 
         if current > self.kChariotCurrentLimit:
             # Stop if current exceeds limit
