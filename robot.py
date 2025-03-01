@@ -22,6 +22,7 @@ import wpilib
 import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
+from pathplannerlib.commands import Pose2d
 from wpimath.filter import SlewRateLimiter
 
 import components.swervedrive as swervedrive
@@ -34,7 +35,7 @@ from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
 from components.chariot import Chariot
-from components.climb import ActionClimb, Climb
+# from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
@@ -74,7 +75,7 @@ class MyRobot(MagicRobot):
     actionCycle: ActionCycle
 
     ##### HIGH Level components first (components that use components) #####
-    actionClimb: ActionClimb
+    # actionClimb: ActionClimb
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
@@ -103,10 +104,8 @@ class MyRobot(MagicRobot):
     reefscape: Reefscape
 
     # Vision
-    limelight_vision: LimeLightVision
-
-    # Pneumatic Hub
-    pneumaticHub: wpilib.PneumaticHub
+    limelight_fr: LimeLightVision
+    limelight_rl: LimeLightVision
 
     # Rikistick
     rikiStick: RikiStick
@@ -114,8 +113,8 @@ class MyRobot(MagicRobot):
     # Lift
     lift: Lift
 
-    # climb
-    climb: Climb
+    # # climb
+    # climb: Climb
 
     # Chariot
     chariot: Chariot
@@ -142,12 +141,6 @@ class MyRobot(MagicRobot):
         self.is_sim: bool = self.isSimulation()
         self.is_real: bool = self.isReal()
         self.dt: float = self.control_loop_wait_time
-
-        # self.arduino_light = I2CArduinoLight(wpilib.I2C.Port.kOnboard, 0x42)
-
-        # NOTE: Remove comment to increase power over 9000 /s
-        # Créé plein de problème sur le modbus, gardé en sourvenir
-        # self.status_light = wpilib.Solenoid(10, wpilib.PneumaticsModuleType.CTREPCM, 1)
 
         # NAVX
         # self.navx: AHRS = AHRS.create_spi()
@@ -195,11 +188,10 @@ class MyRobot(MagicRobot):
         #     kRobotToCam,
         # )
 
-        # Pneumatic Hub
-        self.pneumaticHub = wpilib.PneumaticHub()
-
         # Climb
         # self.climb = Climb()
+        self.limelight_fr = LimeLightVision("limelight_fr")
+        self.limelight_rl = LimeLightVision("limelight_rl")
 
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
@@ -245,8 +237,17 @@ class MyRobot(MagicRobot):
         #     self.drivetrain.addVisionPoseEstimate(
         #         camEstPose.estimatedPose, camEstPose.timestampSeconds
         #     )
+
+        pose: Pose2d
+        timestamp: float
+        stddevs: tuple[float, float, float]
+
+        ret = self.limelight_fr.getVisionMesurement()
+        if ret is not None:
+            pose, timestamp, stddevs = ret
+            self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
         self.drivetrain.updateOdometry()
-        self.drivetrain.log()
+        # self.drivetrain.log()
 
     @override
     def teleopPeriodic(self) -> None:
@@ -261,7 +262,6 @@ class MyRobot(MagicRobot):
 
         # self.teleopLift()
         # self.teleopClimb()
-        # self.teleopIntake()
         # self.teleopCycle()
 
     def teleopTerrainEditMode(self):
@@ -302,17 +302,6 @@ class MyRobot(MagicRobot):
                 return
 
     def teleopCycle(self):
-        leftY = gamepad_helper.apply_deadzone(
-            self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.1
-        )
-        leftX = gamepad_helper.apply_deadzone(
-            self.leftXFilter.calculate(self.gamepad_pilote.getLeftX()), 0.1
-        )
-        rightX = gamepad_helper.apply_deadzone(
-            self.rightXFilter.calculate(self.gamepad_pilote.getRawAxis(3)),
-            0.1,
-        )
-
         # Autonomous cycling
         if self.gamepad_pilote.getAButton():
             self.actionCycle.engage()
@@ -353,25 +342,11 @@ class MyRobot(MagicRobot):
             # Climb climb
             pass
 
-        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
-        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
-        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
-
-        self.drivetrain.drive(xSpeed, ySpeed, rot, True)
-
-    def teleopIntake(self):
-        if self.gamepad_pilote.getAButton():
-            self.actionIntakeEntree.engage()
-        if self.gamepad_pilote.getBButton():
-            self.actionIntakeSortie.engage()
-        else:
-            self.actionClimb.done()
-
-    def teleopClimb(self):
-        if self.gamepad_pilote.getAButton():
-            self.actionClimb.engage()
-        elif self.gamepad_pilote.getAButtonReleased():
-            self.actionClimb.done()
+    # def teleopClimb(self):
+    #     if self.gamepad_pilote.getAButton():
+    #         self.actionClimb.engage()
+    #     elif self.gamepad_pilote.getAButtonReleased():
+    #         self.actionClimb.done()
 
     def teleopLift(self):
         if self.gamepad_pilote.getAButton():
@@ -393,9 +368,6 @@ class MyRobot(MagicRobot):
             self.chariot.stop()
 
     def teleopDrive(self):
-        # TODO
-        # Moduler la vitesse du robot en téléop selon la hauteur du lift
-
         leftY = gamepad_helper.apply_deadzone(
             self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
         )
@@ -406,25 +378,6 @@ class MyRobot(MagicRobot):
             self.rightXFilter.calculate(self.gamepad_pilote.getRightX()), 0.2
         )
 
-        # if self.gamepad_pilote.getAButton():
-
-        #     # self.actionTrajectoryFollower.engage()
-        #     # self.actionPathPlanner.engage()
-        #     self.actionPathPlannerV3.engage()
-        #     # self.actionTrajectoryFollowerV2.engage()
-        # elif self.gamepad_pilote.getAButtonReleased():
-        #     # Only call it once..
-        #     # self.actionTrajectoryFollower.done()
-        #     # self.actionPathPlanner.done()
-        #     self.actionPathPlannerV3.done()
-        #     # self.actionTrajectoryFollowerV2.done()
-
-        # if self.gamepad_pilote.getBButton():
-        #     # self.actionAngularMaxVelocity.engage()
-        #     # self.actionMaxVelocity.engage()
-        #     self.actionMaxAccel.engage()
-        #     return
-
         xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
         ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
         rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
@@ -433,16 +386,12 @@ class MyRobot(MagicRobot):
 
     def teleopManualMode(self):
         if self.gamepad_pilote.getBButton():
-            # self.lift.go_level1()
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getAButton():
-            # self.lift.go_level2()
             self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
-            # self.lift.go_level3()
             self.actionShoot.start(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
-            # self.lift.go_level4()
             self.actionShoot.start(LiftTarget.L4)
         elif self.gamepad_pilote.getLeftBumper():
             self.actionIntake.engage()

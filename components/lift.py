@@ -1,5 +1,6 @@
-from doctest import master
 import math
+from doctest import master
+from enum import IntEnum
 
 import rev
 import wpilib
@@ -10,11 +11,11 @@ import wpimath.units
 from magicbot import StateMachine, feedback, tunable, will_reset_to
 from magicbot.state_machine import state, timed_state
 from wpilib._wpilib import Mechanism2d
-from enum import IntEnum
 
 import constants
 
 HEIGHT_TOLERANCE = 0.05
+
 
 class LiftTarget(IntEnum):
     DEPLACEMENT = 0
@@ -23,6 +24,7 @@ class LiftTarget(IntEnum):
     L3 = 3
     L4 = 4
     INTAKE = 6
+
 
 class Lift:
     kMaxSpeed = tunable(1.0)
@@ -108,8 +110,9 @@ class Lift:
         self.liftPIDController.setD(self.lift_d)
         self.liftPIDController.setConstraints(
             wpimath.trajectory.TrapezoidProfile.Constraints(
-                    self.kMaxSpeed, self.kMaxAccel
-        ),)
+                self.kMaxSpeed, self.kMaxAccel
+            ),
+        )
 
     def go_intake(self):
         self.__aller_a_hauteur(self.hauteurIntake)
@@ -150,6 +153,9 @@ class Lift:
 
     def atZero(self) -> bool:
         return not self.limitswitchZero_1.get() or not self.limitswitchZero_2.get()
+
+    def on_enable(self):
+        self.__aller_a_hauteur(0)
 
     def execute(self):
         """

@@ -102,14 +102,13 @@ class ChariotSimulator:
         #     self.chariot_back_limit_switch_sim.setValue(True)
         # if self.chariot_encoder_sim.getPosition() > 0.01:
         #     self.chariot_back_limit_switch_sim.setValue(False)
-
+        #
         # if self.chariot_encoder_sim.getPosition() >= 0.30:
         #     self.chariot_front_limit_switch_sim.setValue(True)
         # if self.chariot_encoder_sim.getPosition() < 0.29:
         #     self.chariot_front_limit_switch_sim.setValue(False)
-
+        #
         # applyColor(
-        #     RED if self.chariot_front_limit_switch_sim.getValue() else GREEN,
         #     [self.beam_front],
         # )
         # applyColor(
@@ -460,9 +459,9 @@ class PhysicsEngine:
         )
 
         self.liftSimulator: LiftSimulator = LiftSimulator(robot, self.mech2d)
-        self.climbSimulator: ClimbSimulator = ClimbSimulator(robot, self.mech2d)
+        # self.climbSimulator: ClimbSimulator = ClimbSimulator(robot, self.mech2d)
         self.chariotSimulator: ChariotSimulator = ChariotSimulator(robot, self.mech2d)
-        self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot, self.mech2d)
+        # self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot, self.mech2d)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         """
@@ -481,8 +480,8 @@ class PhysicsEngine:
         # Call the components periodic
         self.robot.drivetrain.simulationPeriodic()
         self.liftSimulator.simulationPeriodic()
-        self.climbSimulator.simulationPeriodic()
-        self.intakeSimulator.simulationPeriodic()
+        # self.climbSimulator.simulationPeriodic()
+        # self.intakeSimulator.simulationPeriodic()
         self.chariotSimulator.simulationPeriodic()
 
         # NavX

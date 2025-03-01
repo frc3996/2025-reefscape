@@ -7,7 +7,7 @@ from ntcore import (DoubleArraySubscriber, DoubleSubscriber,
                     FloatArraySubscriber, FloatSubscriber, IntegerSubscriber,
                     NetworkTable, NetworkTableInstance, StringSubscriber)
 from wpimath.filter import MedianFilter
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose2d, Pose3d, Rotation3d, Translation3d
 
 from common import tools
 from components.field import FieldLayout
@@ -16,7 +16,6 @@ from components.swervedrive import SwerveDrive
 
 class LimeLightVision:
     drivetrain: SwerveDrive
-    field_layout: FieldLayout
 
     def __init__(self, name="limelight"):
         self.nt: NetworkTable = NetworkTableInstance.getDefault().getTable(name)
@@ -114,7 +113,12 @@ class LimeLightVision:
     def get_filter_pos(self):
         return self.filter_pos
 
-    def execute(self) -> None:
+    def execute(self):
+        pass
+
+    def getVisionMesurement(
+        self,
+    ) -> tuple[Pose2d, float, tuple[float, float, float]] | None:
         # Add vision pose measurements
         vision_pose = self.get_alliance_pose()
 
@@ -156,9 +160,14 @@ class LimeLightVision:
 
             self.std_devs = [stddev_xy, stddev_xy, stddev_rot]
             self.filter_pos = [x, y, yaw]
-            self.drivetrain.odometry.addVisionMeasurement(
+            # self.drivetrain.odometry.addVisionMeasurement(
+            #     vision_pose[0].toPose2d(),
+            #     # Pose2d(x, y, yaw),
+            #     vision_pose[1],
+            #     (stddev_xy, stddev_xy, stddev_rot),
+            # )
+            return (
                 vision_pose[0].toPose2d(),
-                # Pose2d(x, y, yaw),
                 vision_pose[1],
                 (stddev_xy, stddev_xy, stddev_rot),
             )
