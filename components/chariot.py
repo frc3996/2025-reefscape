@@ -35,6 +35,7 @@ class Chariot:
         self.chariot_motor_config: rev.SparkBaseConfig = rev.SparkBaseConfig()
         _ = self.chariot_motor_config.inverted(True)
         _ = self.chariot_motor_config.smartCurrentLimit(CURRENT_LIMIT_AMP)
+        _ = self.chariot_motor_config.openLoopRampRate(1)
         _ = self.chariot_motor_config.setIdleMode(
             self.chariot_motor_config.IdleMode.kCoast
         )
@@ -52,6 +53,8 @@ class Chariot:
         )
 
         self.__current_target: ChariotTarget = ChariotTarget.TARGET_FRONT
+        self.__last_target = ChariotTarget.TARGET_FRONT
+        self.__target_reached = False
 
     def move_back(self):
         # Only allow moving back when going toward intake height and that we're near it
@@ -93,6 +96,11 @@ class Chariot:
         elif self.lift.get_hauteur_cible() == self.lift.hauteurIntake:
             self.move_back()
 
+        if self.__last_target != self.__current_target:
+            self.__target_reached = False
+            self.__last_target = self.__current_target
+
+
         # Safety, don't move if we're at the bottom or at the top
         if self.lift.atZero() or self.lift.get_lift_height() <= 0.05:
             # Don't you dare move back or front
@@ -106,14 +114,14 @@ class Chariot:
 
         # Actually move if we're not on the right state
         if self.__current_target == ChariotTarget.TARGET_FRONT:
-            if not self.get_chariot_front_limit_switch():
+            if self.__target_reached is False and not self.get_chariot_front_limit_switch():
                 self.chariot_motor.set(self.kChariotSpeed)
             else:
-                self.__current_target = ChariotTarget.TARGET_STOP
+                self.__target_reached = True
                 self.chariot_motor.set(0)
         elif self.__current_target == ChariotTarget.TARGET_BACK:
-            if not self.get_chariot_back_limit_switch():
+            if self.__target_reached is False and not self.get_chariot_back_limit_switch():
                 self.chariot_motor.set(-self.kChariotSpeed)
             else:
-                self.__current_target = ChariotTarget.TARGET_STOP
+                self.__target_reached = True
                 self.chariot_motor.set(0)
