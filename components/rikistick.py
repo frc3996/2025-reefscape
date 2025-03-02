@@ -21,10 +21,10 @@ class RikiStick:
 
     # Terrain edit mode ("r" pour red terrain, "b" pour blue terrain, "" pour pas d'edit)
     editMode_0Non_1Red_2Blue = tunable(0)
-    reefTarget = tunable(1)                 # [1, 12]
-    stationTarget = tunable(1)              # [1, 2]
+    reefTarget = 1 # [1, 12]
+    stationTarget = 1 # [1, 2]
     liftHeightTarget : LiftTarget = LiftTarget.DEPLACEMENT
-    cageTarget = tunable(0)
+    cageTarget = 0 # [0,3]
 
     def __init__(self) -> None:
         self.joystick: wpilib.Joystick = wpilib.Joystick(5)

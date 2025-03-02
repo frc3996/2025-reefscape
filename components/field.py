@@ -15,9 +15,6 @@ from components.reefscape import Reefscape
 apriltagsFilename = r"2025-reefscape.json"
 apriltagsLayoutPath = os.path.join(os.path.dirname(__file__), r"..", apriltagsFilename)
 
-def find_closest_pose(target: Pose2d, poses: list[Pose2d]) -> Pose2d:
-    return min(poses, key=lambda p: p.translation().distance(target.translation()))
-
 class FieldLayout(AprilTagFieldLayout):
     drivetrain: SwerveDrive
     rikiStick: RikiStick
@@ -37,8 +34,7 @@ class FieldLayout(AprilTagFieldLayout):
         return self.reefscape.getAllBluePoints()
 
     def getCoralPosition(self) -> Pose2d:
-        return find_closest_pose(self.drivetrain.getPose(),
-                                 self.reefscape.getAllCoralStationSlides(self.rikiStick.getCoralStationTarget()))
+        return self.reefscape.getClosestCoralStationSlide(self.rikiStick.getCoralStationTarget(), self.drivetrain.getPose())
 
     def getCagePosition(self) -> Pose2d | None:
         if self.rikiStick.getCageTarget() == 0:

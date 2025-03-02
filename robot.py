@@ -44,7 +44,7 @@ from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionIntake, ActionShoot,
-                                      ActionStow)
+                                      ActionStow, ActionCycleAutonomous)
 from components.swervemodule import SwerveModule
 
 kRobotToCam = wpimath.geometry.Transform3d(
@@ -73,6 +73,7 @@ class MyRobot(MagicRobot):
     ##### Auto mode #####
     runAuto: RunAuto
     actionCycle: ActionCycle
+    actionCycleAutonomous: ActionCycleAutonomous
 
     ##### HIGH Level components first (components that use components) #####
     # actionClimb: ActionClimb
@@ -220,6 +221,7 @@ class MyRobot(MagicRobot):
     @override
     def autonomous(self):
         """Pour les modes auto de MagicBot, voir le dossier ./autonomous"""
+        self.drivetrain.drive(0, 0, 0, True)
         super().autonomous()
 
     @override

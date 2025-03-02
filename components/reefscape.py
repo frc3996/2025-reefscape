@@ -13,6 +13,9 @@ FIELD_WIDTH = 8.052
 
 ROBOT_HALF_LENGTH = wpimath.units.inchesToMeters(17) # Incluant le bumper
 
+def find_closest_pose(target: Pose2d, poses: list[Pose2d]) -> Pose2d:
+    return min(poses, key=lambda p: p.translation().distance(target.translation()))
+
 class Reefscape:
 
     def __init__(self):
@@ -78,8 +81,8 @@ class Reefscape:
         assert(numeroSlide in range(1, 5))
         return self.poses[self.__getPrefixeAllianceStr() + "_s" + str(numeroStation) + "_" + str(numeroSlide)]
 
-    def getAllCoralStationSlides(self, numeroStation : int) -> List[Pose2d]:
-        return self.__getAllPointsWithPrefix(self.__getPrefixeAllianceStr() + "_s" + str(numeroStation) + "_")
+    def getClosestCoralStationSlide(self, numeroStation : int, target : Pose2d) -> Pose2d:
+        return find_closest_pose(target, self.__getAllCoralStationSlides(numeroStation))
 
     # Cage 1 à 3
     def getCage(self, numero : int) -> Pose2d:
@@ -91,6 +94,9 @@ class Reefscape:
 
     def getAllBluePoints(self) -> List[Pose2d]:
         return self.__getAllPointsWithPrefix("b_")
+
+    def __getAllCoralStationSlides(self, numeroStation : int) -> List[Pose2d]:
+        return self.__getAllPointsWithPrefix(self.__getPrefixeAllianceStr() + "_s" + str(numeroStation) + "_")
 
     def __getAllPointsWithPrefix(self, prefix : str) -> List[Pose2d]:
         points : List[Pose2d] = []

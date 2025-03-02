@@ -1,5 +1,6 @@
 from dataclasses import field
-from typing import Callable, override
+import os
+from typing import Callable, override, List
 
 import wpilib
 from magicbot import StateMachine, state, timed_state, tunable
@@ -17,6 +18,7 @@ from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.swervedrive import SwerveDrive
+from components.reefscape import Reefscape
 
 
 class ActionStow(StateMachine):
@@ -174,36 +176,42 @@ class ActionPathTester(StateMachine):
     def done(self):
         super().done()
 
-
-class ActionCycle(StateMachine):
+class ActionCycleBase(StateMachine):
     intake: Intake
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
     actionPathPlannerV3: ActionPathPlannerV3
     field_layout: FieldLayout
 
-    @state(first=True)
-    def start(self):
-        print("ActionCycle: START")
-        if self.intake.piece_chargee():
-            self.next_state("move_reef")
-        else:
-            self.next_state("move_coral")
-        self.cage_time()
+    ### MUST OVERRIDE in ActionCycle concrete classes ####
+    def get_reef_position(self) -> Pose2d | None:
+        raise NotImplementedError()
+    def pop_reef_position(self) -> None:
+        raise NotImplementedError()
+    def get_coral_position(self) -> Pose2d | None:
+        raise NotImplementedError()
+    def pop_coral_position(self) -> None:
+        raise NotImplementedError()
+    ######################################################
 
     @state
     def move_reef(self):
         print("ActionCycle: MOVE_REEF")
-        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
-        self.next_state("wait_move_reef")
-        self.cage_time()
+        reefPosition = self.get_reef_position()
+        if reefPosition is not None:
+            self.actionPathPlannerV3.move(reefPosition)
+            self.next_state("wait_move_reef")
+            self.cage_time()
 
     @state
     def wait_move_reef(self):
-        self.actionPathPlannerV3.move(self.field_layout.getReefPosition())
-        if not self.actionPathPlannerV3.is_executing:
-            self.next_state("engage_deposit")
-        self.cage_time()
+        reefPosition = self.get_reef_position()
+        if reefPosition is not None:
+            self.actionPathPlannerV3.move(reefPosition)
+            if not self.actionPathPlannerV3.is_executing:
+                self.pop_reef_position()
+                self.next_state("engage_deposit")
+            self.cage_time()
 
     @state
     def engage_deposit(self):
@@ -222,16 +230,21 @@ class ActionCycle(StateMachine):
     @state
     def move_coral(self):
         print("ActionCycle: move_coral")
-        self.actionPathPlannerV3.move(self.field_layout.getCoralPosition())
-        self.next_state("wait_move_coral")
-        self.cage_time()
+        coralPosition = self.get_coral_position()
+        if coralPosition is not None:
+            self.actionPathPlannerV3.move(coralPosition)
+            self.next_state("wait_move_coral")
+            self.cage_time()
 
     @state
     def wait_move_coral(self):
-        self.actionPathPlannerV3.move(self.field_layout.getCoralPosition())
-        if not self.actionPathPlannerV3.is_executing:
-            self.next_state("engage_intake")
-        self.cage_time()
+        coralPosition = self.get_coral_position()
+        if coralPosition is not None:
+            self.actionPathPlannerV3.move(coralPosition)
+            if not self.actionPathPlannerV3.is_executing:
+                self.pop_coral_position()
+                self.next_state("engage_intake")
+            self.cage_time()
 
     @state
     def engage_intake(self):
@@ -278,3 +291,119 @@ class ActionCycle(StateMachine):
     def cage_time(self):
         if self.field_layout.getCagePosition() is not None:
             self.next_state("move_cage")
+
+class ActionCycle(ActionCycleBase):
+    @state(first=True)
+    def start(self):
+        print("ActionCycle: START")
+        if self.intake.piece_chargee():
+            self.next_state("move_reef")
+        else:
+            self.next_state("move_coral")
+        self.cage_time()
+
+    @override
+    def get_reef_position(self) -> Pose2d | None:
+        return self.field_layout.getReefPosition()
+    @override
+    def pop_reef_position(self) -> None:
+        pass
+    @override
+    def get_coral_position(self) -> Pose2d | None:
+        return self.field_layout.getCoralPosition()
+    @override
+    def pop_coral_position(self) -> None:
+        pass
+
+class ActionCycleAutonomous(ActionCycleBase):
+
+    drivetrain: SwerveDrive
+    reefscape : Reefscape
+    autonomousActions : List[str] = []
+    AUTONOMOUS_ACTIONS_FILE = "autonomous_actions.txt"
+
+    def __init__(self):
+        self.autonomousActions = []
+        pathFichier = os.path.join(os.path.dirname(__file__), r"..", self.AUTONOMOUS_ACTIONS_FILE)
+        try:
+            with open(pathFichier, 'r') as fichier:
+                for line in fichier:
+                    line = line.strip()
+                    if len(line) > 0 and line[0] != "#":
+                        self.autonomousActions.append(line)
+        except FileNotFoundError:
+            print(self.AUTONOMOUS_ACTIONS_FILE + " not found.")
+        if not self._validate_autonomous_actions():
+            print("Invalid autonomous actions sequence. Autonomous actions will not be executed.")
+            self.autonomousActions = []
+
+    @state(first=True)
+    def start(self):
+        if len(self.autonomousActions) == 0:
+            print("ActionCycleAutonomous: CANNOT START -- no actions")
+        else:
+            print("ActionCycleAutonomous: START")
+            if self.autonomousActions[0][0] == "r":
+                self.next_state("move_reef")
+            elif self.autonomousActions[0][0] == "s":
+                self.next_state("move_coral")
+            else:
+                print("ActionCycleAutonomous: CANNOT START -- invalid start action")
+
+    def _validate_autonomous_actions(self) -> bool:
+        if len(self.autonomousActions) == 0:
+            return False
+        for action in self.autonomousActions:
+            match action[0]:
+                case "r":
+                    if int(action[1:]) not in range(1, 13):
+                        print("Invalid reef: " + action)
+                        return False
+                case "s":
+                    if int(action[1:]) not in range(1, 3):
+                        print("Invalid coral station: " + action)
+                        return False
+                case "l":
+                    if int(action[1:]) not in range(1, 5):
+                        print("Invalid level: " + action)
+                        return False
+                case _:
+                    print("Invalid action: " + action)
+                    return False
+        return True
+
+    @override
+    def get_reef_position(self) -> Pose2d | None:
+        if len(self.autonomousActions) == 0:
+            return None
+        elif self.autonomousActions[0][0] != "r":
+            return None
+        else:
+            reef = int(self.autonomousActions[0][1:])
+            pose = self.reefscape.getReef(reef)
+            # print("Reef " + str(reef) + " @ x: " + str(pose.translation().x) + " y: " + str(pose.translation().y))
+            return pose
+
+    @override
+    def pop_reef_position(self) -> None:
+        if len(self.autonomousActions) > 0:
+            self.autonomousActions.pop(0)
+
+    @override
+    def get_coral_position(self) -> Pose2d | None:
+        if len(self.autonomousActions) == 0:
+            print("INVALID CORAL POSITION: EMPTY LIST")
+            return None
+        elif self.autonomousActions[0][0] != "s":
+            print("INVALID CORAL POSITION: WRONG TYPE")
+            return None
+        else:
+            station = int(self.autonomousActions[0][1:])
+            pose = self.reefscape.getClosestCoralStationSlide(station, self.drivetrain.getPose())
+            # print("Station " + str(station) + " @ x: " + str(pose.translation().x) + " y: " + str(pose.translation().y))
+            return pose
+
+    @override
+    def pop_coral_position(self) -> None:
+        if len(self.autonomousActions) > 0:
+            self.autonomousActions.pop(0)

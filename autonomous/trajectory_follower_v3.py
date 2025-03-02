@@ -178,7 +178,7 @@ class ActionPathPlannerV3(StateMachine):
 
     @state()
     def follow(self):
-        print("FOLLOW")
+        # print("FOLLOW")
         if self.controller.getPositionalError() > 1:
             # Strayed too far, recalculate the path
             self.next_state("generate")
