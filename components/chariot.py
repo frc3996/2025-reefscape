@@ -54,7 +54,7 @@ class Chariot:
 
         self.__current_target: ChariotTarget = ChariotTarget.TARGET_FRONT
         self.__last_target = ChariotTarget.TARGET_FRONT
-        self.__target_reached = False
+        self.target_reached = False
 
     def move_back(self):
         # Only allow moving back when going toward intake height and that we're near it
@@ -100,7 +100,7 @@ class Chariot:
             self.move_back()
 
         if self.__last_target != self.__current_target:
-            self.__target_reached = False
+            self.target_reached = False
             self.__last_target = self.__current_target
 
 
@@ -110,21 +110,25 @@ class Chariot:
             self.chariot_motor.set(0)
             return
 
-        if self.lift.get_hauteur_cible() >= self.lift.hauteurLevel4 - 0.10:
+        if not self.target_reached:
+            self.lift.limit_height()
+
+        if self.lift.get_lift_height() >= self.lift.hauteurLevel4 - 0.20:
             # Don't you dare move back or front
             self.chariot_motor.set(0)
             return
 
         # Actually move if we're not on the right state
+        targetSpeed = 0
         if self.__current_target == ChariotTarget.TARGET_FRONT:
-            if not self.__target_reached and not self.get_chariot_front_limit_switch():
-                self.chariot_motor.set(self.kChariotSpeed)
+            if not self.target_reached and not self.get_chariot_front_limit_switch():
+                targetSpeed = self.kChariotSpeed
             else:
-                self.__target_reached = True
-                self.chariot_motor.set(0)
+                self.target_reached = True
         elif self.__current_target == ChariotTarget.TARGET_BACK:
-            if not self.__target_reached and not self.get_chariot_back_limit_switch():
-                self.chariot_motor.set(-self.kChariotSpeed)
+            if not self.target_reached and not self.get_chariot_back_limit_switch():
+                targetSpeed = -self.kChariotSpeed
             else:
-                self.__target_reached = True
-                self.chariot_motor.set(0)
+                self.target_reached = True
+        # print("Chariot target speed: " + str(targetSpeed))
+        self.chariot_motor.set(targetSpeed)

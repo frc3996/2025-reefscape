@@ -238,15 +238,15 @@ class MyRobot(MagicRobot):
         #     self.drivetrain.addVisionPoseEstimate(
         #         camEstPose.estimatedPose, camEstPose.timestampSeconds
         #     )
-        # pose: Pose2d
-        # timestamp: float
-        # stddevs: tuple[float, float, float]
-        # ret = self.limelight_fr.getVisionMesurement()
-        # if ret is not None:
-        #     pose, timestamp, stddevs = ret
-        #     self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
+        pose: Pose2d
+        timestamp: float
+        stddevs: tuple[float, float, float]
+        ret = self.limelight_fr.getVisionMesurement()
+        if ret is not None:
+            pose, timestamp, stddevs = ret
+            self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
         self.drivetrain.updateOdometry()
-        self.drivetrain.log()
+        # self.drivetrain.log()
 
     @override
     def teleopPeriodic(self) -> None:
@@ -260,7 +260,7 @@ class MyRobot(MagicRobot):
             self.teleopTerrainEditMode()
         else:
             self.teleopManualOperations()
-            self.teleopAutonomousCycle()
+            #self.teleopAutonomousCycle()
 
     def teleopTerrainEditMode(self):
         assert self.rikiStick.isEditMode()
@@ -308,31 +308,23 @@ class MyRobot(MagicRobot):
 
         # Manual lift
         tolerancePOV = 8
-        if self.gamepad_pilote.getLeftBumper():
-            self.lift.go_intake()
-        elif self.gamepad_pilote.getRightBumper():
-            self.lift.go_deplacement()
-        elif self.gamepad_pilote.getPOV() >= 0:
+        if self.gamepad_pilote.getPOV() >= 0:
             if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
-                self.lift.go_level4()
+                self.actionShoot.start(LiftTarget.L4)
             elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
-                self.lift.go_level3()
+                self.actionShoot.start(LiftTarget.L3)
             elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
-                self.lift.go_level2()
+                self.actionShoot.start(LiftTarget.L2)
             elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
-                self.lift.go_level1()
+                self.actionShoot.start(LiftTarget.L1)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
-            self.actionIntakeEntree.engage()
-        elif self.actionIntakeEntree.is_executing:
-            self.actionIntakeEntree.done()
+            self.actionIntake.engage()
 
         # Deposit coral
         if self.gamepad_pilote.getRightTriggerAxis() > 0.5:
             self.actionIntakeSortie.engage()
-        elif self.actionIntakeSortie.is_executing:
-            self.actionIntakeSortie.done()
 
         # Manual climb
         if self.gamepad_pilote.getStartButton():

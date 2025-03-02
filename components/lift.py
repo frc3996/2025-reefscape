@@ -29,6 +29,7 @@ class LiftTarget(IntEnum):
 class Lift:
     kMaxSpeed = tunable(1.0)
     kMaxAccel = tunable(1.0)
+    __limit_height = will_reset_to(False)
 
     gamepad_pilote: wpilib.XboxController
 
@@ -114,6 +115,9 @@ class Lift:
             ),
         )
 
+    def limit_height(self):
+        self.__limit_height = True
+
     def go_intake(self):
         self.__aller_a_hauteur(self.hauteurIntake)
 
@@ -169,5 +173,7 @@ class Lift:
             self.stringEncoder.reset()
             self.liftPIDController.reset(0)
         else:
+            if self.__limit_height and targetHeight >= self.hauteurLevel4 - 0.3:
+                targetHeight = targetHeight - 0.3
             liftOutput = self.liftPIDController.calculate(currentHeight, targetHeight)
             self.liftMaster.set(liftOutput / self.kMaxSpeed)
