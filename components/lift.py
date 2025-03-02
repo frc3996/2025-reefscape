@@ -154,9 +154,6 @@ class Lift:
     def atZero(self) -> bool:
         return not self.limitswitchZero_1.get() or not self.limitswitchZero_2.get()
 
-    def on_enable(self):
-        self.__aller_a_hauteur(0)
-
     def execute(self):
         """
         Cette fonction est appelé à chaque itération/boucle
