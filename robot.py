@@ -308,20 +308,18 @@ class MyRobot(MagicRobot):
             return
 
         # Manual lift
-        tolerancePOV = 8
-        if self.gamepad_pilote.getPOV() >= 0:
-            if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
-                self.snapAngle.engage(self.field_layout.getReefPosition())
-                self.actionShoot.start(LiftTarget.L4)
-            elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
-                self.snapAngle.engage(self.field_layout.getReefPosition())
-                self.actionShoot.start(LiftTarget.L3)
-            elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
-                self.snapAngle.engage(self.field_layout.getReefPosition())
-                self.actionShoot.start(LiftTarget.L2)
-            elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
-                self.snapAngle.engage(self.field_layout.getReefPosition())
-                self.actionShoot.start(LiftTarget.L1)
+        if self.gamepad_pilote.getAButton():
+            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.actionShoot.start(LiftTarget.L1)
+        elif self.gamepad_pilote.getBButton():
+            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.actionShoot.start(LiftTarget.L2)
+        elif self.gamepad_pilote.getXButton():
+            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.actionShoot.start(LiftTarget.L3)
+        elif self.gamepad_pilote.getYButton():
+            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.actionShoot.start(LiftTarget.L4)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
