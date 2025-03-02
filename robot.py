@@ -325,7 +325,8 @@ class MyRobot(MagicRobot):
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
-            self.snapAngle.engage(self.field_layout.getCoralPosition())
+            stationPose = self.field_layout.getCoralPosition()
+            self.snapAngle.engage(stationPose.rotateBy(wpimath.geometry.Rotation2d.fromDegrees(180)))
             self.actionIntake.engage()
 
         # Deposit coral

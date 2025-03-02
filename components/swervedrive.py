@@ -83,6 +83,8 @@ class SwerveDrive:
             self.backRightLocation,
         )
 
+        self.gyro.reset()
+
         self.poseEst = wpimath.estimator.SwerveDrive4PoseEstimator(
             self.kinematics,
             self.gyro.getRotation2d(),
@@ -95,7 +97,6 @@ class SwerveDrive:
             kInitialPose,
         )
 
-        self.gyro.reset()
 
         # LOG
         nt = ntcore.NetworkTableInstance.getDefault()
@@ -360,8 +361,8 @@ class SnapAngle(StateMachine):
     drivetrain: SwerveDrive
     target_pose: wpimath.geometry.Pose2d = None
     target_reached: bool = False
-    angle_pid: controller.ProfiledPIDController = None
-    angle_kp = tunable(0.002)
+    angle_pid: controller.PIDController = None
+    angle_kp = tunable(0.04)
     angle_ki = tunable(0.0)
     angle_kd = tunable(0.0)
     max_angular_velocity = tunable(math.degrees(math.pi * 2) * 2)
@@ -374,16 +375,17 @@ class SnapAngle(StateMachine):
         return super().engage(initial_state, force)
 
     def initialize_pid(self):
-        self.angle_pid = controller.ProfiledPIDController(
+        self.angle_pid = controller.PIDController(
             self.angle_kp,
             self.angle_ki,
-            self.angle_kd,
-            trajectory.TrapezoidProfile.Constraints(
-                constants.MAX_ANGULAR_VEL, constants.MAX_ANGULAR_ACCEL
-            ),
+            self.angle_kd
+            # trajectory.TrapezoidProfile.Constraints(
+            #     self.max_angular_velocity, self.max_angular_acceleration
+            # ),
         )
         self.angle_pid.enableContinuousInput(-180, 180)
-        self.angle_pid.setTolerance(-0.2, 0.2)
+        self.angle_pid.setTolerance(-2, 2)
+        # self.angle_pid.reset(self.drivetrain.getPose().rotation().degrees())
 
     @state(first=True)
     def snap_angle(self, initial_call):
@@ -394,8 +396,10 @@ class SnapAngle(StateMachine):
         omega = self.angle_pid.calculate(
                 self.drivetrain.getPose().rotation().degrees(), self.target_pose.rotation().degrees()
         )
-        # omega = max(min(omega, 2), -2)
-        # if abs(omega) <= 0.002:
-        #     omega = 0
+        omega = max(min(omega, 2), -2)
+        if abs(omega) <= 0.1:
+             # self.angle_pid.reset(self.drivetrain.getPose().rotation().degrees())
+            omega = 0
+        print(omega, self.drivetrain.getPose().rotation().degrees() - self.target_pose.rotation().degrees())
         cs = wpimath.kinematics.ChassisSpeeds(0, 0, omega)
         self.drivetrain.drive_auto(cs)
