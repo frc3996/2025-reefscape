@@ -310,16 +310,21 @@ class MyRobot(MagicRobot):
         tolerancePOV = 8
         if self.gamepad_pilote.getPOV() >= 0:
             if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
+                self.snapAngle.engage(self.field_layout.getReefPosition())
                 self.actionShoot.start(LiftTarget.L4)
             elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
+                self.snapAngle.engage(self.field_layout.getReefPosition())
                 self.actionShoot.start(LiftTarget.L3)
             elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
+                self.snapAngle.engage(self.field_layout.getReefPosition())
                 self.actionShoot.start(LiftTarget.L2)
             elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
+                self.snapAngle.engage(self.field_layout.getReefPosition())
                 self.actionShoot.start(LiftTarget.L1)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
+            self.snapAngle.engage(self.field_layout.getReefPosition())
             self.actionIntake.engage()
 
         # Deposit coral

@@ -17,7 +17,7 @@ from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
-from components.swervedrive import SwerveDrive, SnapAngle
+from components.swervedrive import SwerveDrive
 from components.reefscape import Reefscape
 
 
@@ -77,7 +77,6 @@ class ActionShoot(StateMachine):
     actionStow: ActionStow
     chariot: Chariot
     current_target: LiftTarget = LiftTarget.DEPLACEMENT
-    snapAngle: SnapAngle
 
     def __init__(self):
         self.ready_to_shoot: bool = False
