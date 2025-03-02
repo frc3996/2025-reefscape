@@ -35,7 +35,7 @@ class Lift:
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDeplacement = tunable(0.2)
+    hauteurDeplacement = tunable(0.1)
     hauteurIntake = tunable(0.36)
     hauteurLevel1 = tunable(0.35)
     hauteurLevel2 = tunable(0.53)

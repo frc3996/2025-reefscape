@@ -20,7 +20,7 @@ CURRENT_LIMIT_AMP = 100
 class Chariot:
     __current_target: ChariotTarget = ChariotTarget.TARGET_STOP
     lift: Lift
-    kChariotSpeed = tunable(0.35)
+    kChariotSpeed = tunable(0.38)
 
     def setup(self):
         """
@@ -35,7 +35,7 @@ class Chariot:
         self.chariot_motor_config: rev.SparkBaseConfig = rev.SparkBaseConfig()
         _ = self.chariot_motor_config.inverted(True)
         _ = self.chariot_motor_config.smartCurrentLimit(CURRENT_LIMIT_AMP)
-        _ = self.chariot_motor_config.openLoopRampRate(1)
+        _ = self.chariot_motor_config.openLoopRampRate(0.1)
         _ = self.chariot_motor_config.setIdleMode(
             self.chariot_motor_config.IdleMode.kBrake
         )
