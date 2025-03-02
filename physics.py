@@ -62,12 +62,12 @@ class ChariotSimulator:
             rev.SparkRelativeEncoderSim(self.robot.chariot.chariot_motor)
         )
 
-        # self.chariot_front_limit_switch_sim: wpilib.simulation.DIOSim = (
-        #     wpilib.simulation.DIOSim(self.robot.chariot.chariot_front_limit_switch)
-        # )
-        # self.chariot_back_limit_switch_sim: wpilib.simulation.DIOSim = (
-        #     wpilib.simulation.DIOSim(self.robot.chariot.chariot_back_limit_switch)
-        # )
+        self.chariot_front_limit_switch_sim: wpilib.simulation.DIOSim = (
+            wpilib.simulation.DIOSim(self.robot.chariot.chariot_front_limit_switch)
+        )
+        self.chariot_back_limit_switch_sim: wpilib.simulation.DIOSim = (
+            wpilib.simulation.DIOSim(self.robot.chariot.chariot_back_limit_switch)
+        )
 
         self.beam_front_root: MechanismRoot2d = self.mech2d.getRoot(
             "BeamFrontRoot", 0.1, 1.2
@@ -98,23 +98,24 @@ class ChariotSimulator:
         )
         self.chariot_encoder_sim.setPosition(min(max(0, pos), 30))
 
-        # if self.chariot_encoder_sim.getPosition() <= 0:
-        #     self.chariot_back_limit_switch_sim.setValue(True)
-        # if self.chariot_encoder_sim.getPosition() > 0.01:
-        #     self.chariot_back_limit_switch_sim.setValue(False)
-        #
-        # if self.chariot_encoder_sim.getPosition() >= 0.30:
-        #     self.chariot_front_limit_switch_sim.setValue(True)
-        # if self.chariot_encoder_sim.getPosition() < 0.29:
-        #     self.chariot_front_limit_switch_sim.setValue(False)
-        #
-        # applyColor(
-        #     [self.beam_front],
-        # )
-        # applyColor(
-        #     RED if self.chariot_back_limit_switch_sim.getValue() else GREEN,
-        #     [self.beam_back],
-        # )
+        if self.chariot_encoder_sim.getPosition() <= 0:
+            self.chariot_back_limit_switch_sim.setValue(True)
+        if self.chariot_encoder_sim.getPosition() > 0.01:
+            self.chariot_back_limit_switch_sim.setValue(False)
+
+        if self.chariot_encoder_sim.getPosition() >= 0.30:
+            self.chariot_front_limit_switch_sim.setValue(True)
+        if self.chariot_encoder_sim.getPosition() < 0.29:
+            self.chariot_front_limit_switch_sim.setValue(False)
+
+        applyColor(
+            RED if self.chariot_front_limit_switch_sim.getValue() else GREEN,
+            [self.beam_front],
+        )
+        applyColor(
+            RED if self.chariot_back_limit_switch_sim.getValue() else GREEN,
+            [self.beam_back],
+        )
 
         self.chariot_root.setPosition(
             self.chariot_encoder_sim.getPosition() + 0.20, 1.2
@@ -461,7 +462,7 @@ class PhysicsEngine:
         self.liftSimulator: LiftSimulator = LiftSimulator(robot, self.mech2d)
         # self.climbSimulator: ClimbSimulator = ClimbSimulator(robot, self.mech2d)
         self.chariotSimulator: ChariotSimulator = ChariotSimulator(robot, self.mech2d)
-        # self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot, self.mech2d)
+        self.intakeSimulator: IntakeSimulator = IntakeSimulator(robot, self.mech2d)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         """
@@ -481,7 +482,7 @@ class PhysicsEngine:
         self.robot.drivetrain.simulationPeriodic()
         self.liftSimulator.simulationPeriodic()
         # self.climbSimulator.simulationPeriodic()
-        # self.intakeSimulator.simulationPeriodic()
+        self.intakeSimulator.simulationPeriodic()
         self.chariotSimulator.simulationPeriodic()
 
         # NavX
