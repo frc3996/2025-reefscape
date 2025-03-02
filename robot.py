@@ -311,14 +311,15 @@ class MyRobot(MagicRobot):
             self.lift.go_intake()
         elif self.gamepad_pilote.getRightBumper():
             self.lift.go_deplacement()
-        if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
-            self.lift.go_level4()
-        elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
-            self.lift.go_level3()
-        elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
-            self.lift.go_level2()
-        elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
-            self.lift.go_level1()
+        elif self.gamepad_pilote.getPOV() >= 0:
+            if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
+                self.lift.go_level4()
+            elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
+                self.lift.go_level3()
+            elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
+                self.lift.go_level2()
+            elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
+                self.lift.go_level1()
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
