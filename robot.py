@@ -14,7 +14,7 @@ SWERVES (FALCONS x4) LIME LIGHT
 
 import math
 from datetime import datetime
-from typing import override
+from typing import override, Dict, Callable
 
 import ntcore
 import rev
@@ -52,6 +52,15 @@ kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Rotation3d.fromDegrees(0.0, -30.0, 0.0),
 )
 
+RIKITIK_ENABLE_TEST_MODE : bool = False
+GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP : dict[int, Callable[[Lift], None]] = { # button are zero indexed, see +1 at usage
+    4: Lift.go_intake, # left bumper
+    5: Lift.go_deplacement, # right bumper
+    13: Lift.go_level1, # d-pad
+    15: Lift.go_level2, # d-pad
+    14: Lift.go_level3, # d-pad
+    12: Lift.go_level4, # d-pad
+}
 
 class MyRobot(MagicRobot):
     """
@@ -125,6 +134,9 @@ class MyRobot(MagicRobot):
 
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
+
+    # Autonomous cycling toggle
+    isAutoCycling: bool = True
 
     def __init__(self) -> None:
         super().__init__()
@@ -233,7 +245,6 @@ class MyRobot(MagicRobot):
         #     self.drivetrain.addVisionPoseEstimate(
         #         camEstPose.estimatedPose, camEstPose.timestampSeconds
         #     )
-
         # pose: Pose2d
         # timestamp: float
         # stddevs: tuple[float, float, float]
@@ -246,22 +257,20 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        if self.rikiStick.isEditMode():
-            self.teleopTerrainEditMode()
-            return
-
-        # if not self.gamepad_copilote.getRawButton(1):
+        # Always drive
         self.teleopDrive()
-        self.teleopManualMode()
-        # return
 
-        # self.teleopLift()
-        # self.teleopClimb()
-        # self.teleopCycle()
+        # Sub-modes
+        if RIKITIK_ENABLE_TEST_MODE:
+            self.teleopScratchpadTestMode()
+        elif self.rikiStick.isEditMode():
+            self.teleopTerrainEditMode()
+        else:
+            self.teleopManualOperations()
+            self.teleopAutonomousCycle()
 
     def teleopTerrainEditMode(self):
         assert self.rikiStick.isEditMode()
-        self.teleopDrive()
         if self.rikiStick.getKillSwitch():
             self.rikiStick.disableEditMode()
             self.reefscape.save(
@@ -296,75 +305,48 @@ class MyRobot(MagicRobot):
                     return
         # Cages
         for i in range(1, 4):
-            if self.rikiStick.isCageButtonPressed(i):
+            if self.rikiStick.isCageButtonPressed_EDIT_MODE(i):
                 self.reefscape.setCagePose(team, i, self.drivetrain.getPose())
                 return
 
-    def teleopCycle(self):
-        # Autonomous cycling
-        if self.gamepad_pilote.getAButton():
-            self.actionCycle.engage()
-        elif self.gamepad_pilote.getAButtonReleased():
-            self.actionCycle.done()
+    def teleopManualOperations(self):
+        # Manual lift
+        for button in GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP:
+            if self.gamepad_pilote.getRawButton(button + 1):
+                GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP[button](self.lift)
+                break
 
         # Intake coral
-        if self.gamepad_pilote.getRawAxis(2) > 0.5:
+        if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
             self.actionIntakeEntree.engage()
         elif self.actionIntakeEntree.is_executing:
             self.actionIntakeEntree.done()
 
         # Deposit coral
-        if self.gamepad_pilote.getRawAxis(5) > 0.5:
+        if self.gamepad_pilote.getRightTriggerAxis() > 0.5:
             self.actionIntakeSortie.engage()
         elif self.actionIntakeSortie.is_executing:
             self.actionIntakeSortie.done()
 
-        # Coral level
-        if abs(self.gamepad_pilote.getPOV() - 0) < 5:
-            # LEVEL 4
+        # Manual climb
+        if self.gamepad_pilote.getStartButton():
             pass
-        elif abs(self.gamepad_pilote.getPOV() - 270) < 5:
-            # LEVEL 3
+            # self.actionClimb.engage(forward ou +1 direction)
+        elif self.gamepad_pilote.getBackButton():
             pass
-        elif abs(self.gamepad_pilote.getPOV() - 90) < 5:
-            # LEVEL 2
-            pass
-        elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
-            # LEVEL 2
-            pass
-
-        # Climb
-        if self.gamepad_pilote.getLeftBumper():
-            # Climb deploy
-            pass
-        if self.gamepad_pilote.getRightBumper():
-            # Climb climb
-            pass
-
-    # def teleopClimb(self):
-    #     if self.gamepad_pilote.getAButton():
-    #         self.actionClimb.engage()
-    #     elif self.gamepad_pilote.getAButtonReleased():
-    #         self.actionClimb.done()
-
-    def teleopLift(self):
-        if self.gamepad_pilote.getAButton():
-            self.lift.go_intake()
-        elif self.gamepad_pilote.getXButton():
-            self.lift.go_level1()
-        elif self.gamepad_pilote.getYButton():
-            self.lift.go_level2()
-        elif self.gamepad_pilote.getBButton():
-            self.lift.go_level3()
-        elif self.gamepad_pilote.getStartButton():
-            self.lift.go_deplacement()
-
-        if self.gamepad_pilote.getLeftBumper():
-            self.chariot.move_back()
-        elif self.gamepad_pilote.getRightBumper():
-            self.chariot.move_front()
+            # self.actionClimb.engage(backward ou -1 direction)
         else:
-            self.chariot.stop()
+            pass
+            # self.actionClimb.done()
+
+    def teleopAutonomousCycle(self):
+        if self.gamepad_pilote.getAButtonPressed():
+            self.isAutoCycling = not self.isAutoCycling # toggle
+
+        if self.isAutoCycling:
+            self.actionCycle.engage()
+        elif self.actionCycle.is_executing:
+            self.actionCycle.done()
 
     def teleopDrive(self):
         leftY = gamepad_helper.apply_deadzone(
@@ -383,7 +365,8 @@ class MyRobot(MagicRobot):
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
-    def teleopManualMode(self):
+    # Scratchpad test mode, enable it by setting RIKITIK_ENABLE_TEST_MODE to True at the top of the file
+    def teleopScratchpadTestMode(self):
         if self.gamepad_pilote.getBButton():
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getAButton():

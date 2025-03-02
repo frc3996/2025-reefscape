@@ -1,8 +1,9 @@
+from typing import Callable
 import wpilib
 from magicbot import feedback, tunable
 from components.lift import LiftTarget
 
-RIKISTICK2_BUTTON_TO_REEF_MAP = { # zero-based, voir +1 ci-dessous.
+RIKISTICK2_BUTTON_TO_REEF_MAP : dict[int, int] = { # zero-based, voir +1 ci-dessous.
     1: 1,
     0: 2,
     8: 3,
@@ -17,17 +18,20 @@ RIKISTICK2_BUTTON_TO_REEF_MAP = { # zero-based, voir +1 ci-dessous.
     2: 12
 }
 
-class RikiStick:
+RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP : dict[int, LiftTarget] = { # zero-based, voir +1 ci-dessous.
+    2: LiftTarget.L1,
+    15: LiftTarget.L2,
+    14: LiftTarget.L3,
+    13: LiftTarget.L4,
+}
 
-    # Terrain edit mode ("r" pour red terrain, "b" pour blue terrain, "" pour pas d'edit)
+class RikiStick:
     editMode_0Non_1Red_2Blue = tunable(0)
     reefTarget = 1 # [1, 12]
     stationTarget = 1 # [1, 2]
     liftHeightTarget : LiftTarget = LiftTarget.DEPLACEMENT
-    cageTarget = 0 # [0,3]
 
     def __init__(self) -> None:
-        self.joystick: wpilib.Joystick = wpilib.Joystick(5)
         self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
         self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
 
@@ -57,9 +61,6 @@ class RikiStick:
     def getLiftHeightTarget(self) -> LiftTarget:
         return self.liftHeightTarget
 
-    def getCageTarget(self) -> int: # Zero si pas de cage cible
-        return self.cageTarget
-
     @feedback
     def getReefTarget(self) -> int:
         assert(self.reefTarget in range(1, 13))
@@ -75,55 +76,38 @@ class RikiStick:
                     return True
         return False
 
+    # En mode edit, les boutons du light target sont utilisés pour configurer la pose des cages
+    def isCageButtonPressed_EDIT_MODE(self, cage: int) -> bool: # cage: [1, 3]
+        for button in RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP:
+            if self.rikistick1.getRawButton(button + 1):
+                liftTarget = RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP[button]
+                if liftTarget == LiftTarget.L4 and cage == 1:
+                    return True
+                elif liftTarget == LiftTarget.L3 and cage == 2:
+                    return True
+                elif liftTarget == LiftTarget.L2 and cage == 3:
+                    return True
+        return False
+
     def isStationButtonPressed(self, station: int) -> bool: # station: [1, 2]
         return self.rikistick1.getRawButton(station)
 
-    def isCageButtonPressed(self, cage: int) -> bool: # cage: [1, 3]
-        if cage == 1 and self.rikistick1.getRawButtonPressed(14):
-            return True
-        elif cage == 2 and self.rikistick1.getRawButtonPressed(15):
-            return True
-        elif cage == 3 and self.rikistick1.getRawButtonPressed(16):
-            return True
-        return False
-
     def execute(self):
         # Reefs
-        if (not self.rikistick2 is None) and (self.rikistick2.getButtonCount() != 0):
+        if (not self.rikistick2 is None) and (self.rikistick2.getButtonCount() > 0):
             for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
                 if self.rikistick2.getRawButton(button + 1):
                     self.reefTarget = RIKISTICK2_BUTTON_TO_REEF_MAP[button]
                     break
 
-        if (not self.rikistick1 is None) and (self.rikistick1.getButtonCount() != 0):
+        if (not self.rikistick1 is None) and (self.rikistick1.getButtonCount() > 0):
             # Coral station
             for i in range(1, 3):
                 if self.isStationButtonPressed(i):
                     self.stationTarget = i
                     break
-            # Cage position
-            for i in range(1, 4):
-                if self.isCageButtonPressed(i):
-                    self.cageTarget = i
+            # Lift targets
+            for button in RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP:
+                if self.rikistick1.getRawButton(button + 1):
+                    self.liftHeightTarget = RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP[button]
                     break
-
-    def execute_sim(self):
-        if self.joystick is None or self.joystick.getButtonCount() == 0:
-            return
-
-        for i in range(1, 13):
-            if self.joystick.getRawButton(i):
-                self.reefTarget = i
-                break
-        if self.joystick.getRawButton(13):
-            self.stationTarget = 1
-        elif self.joystick.getRawButton(14):
-            self.stationTarget = 2
-
-        # # CagePosition
-        # if self.joystick.getRawButton(15):
-        #     self._cagePosition = 1
-        # elif self.joystick.getRawButton(16):
-        #     self._cagePosition = 2
-        # elif self.joystick.getRawButton(17):
-        #     self._cagePosition = 3

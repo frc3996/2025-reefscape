@@ -106,12 +106,15 @@ class Reefscape:
         return points
 
     def __getPrefixeAllianceStr(self) -> str:
-        if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
-            return "r"
-        elif DriverStation.getAlliance() == DriverStation.Alliance.kBlue:
-            return "b"
-        else:
-            raise Exception("Pick a side")
+        alliance = DriverStation.getAlliance()
+        match alliance:
+            case None: # Pour robotpy test en mode autonome
+                return "r"
+            case DriverStation.Alliance.kRed:
+                return "r"
+            case DriverStation.Alliance.kBlue:
+                return "b"
+        raise Exception("Pick a side")
 
     def execute(self):
         pass

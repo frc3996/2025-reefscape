@@ -37,10 +37,7 @@ class FieldLayout(AprilTagFieldLayout):
         return self.reefscape.getClosestCoralStationSlide(self.rikiStick.getCoralStationTarget(), self.drivetrain.getPose())
 
     def getCagePosition(self) -> Pose2d | None:
-        if self.rikiStick.getCageTarget() == 0:
-            return None
-        else:
-            return self.reefscape.getCage(self.rikiStick.getCageTarget())
+        return self.reefscape.getCage(1)    #TODO la cage choisi par le gamepad avec la killswitch à off?
 
     def getReefPosition(self) -> Pose2d:
         return self.reefscape.getReef(self.rikiStick.getReefTarget())
