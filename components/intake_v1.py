@@ -118,9 +118,9 @@ class ActionIntakeEntree(StateMachine):
 class ActionIntakeSortie(StateMachine):
     intake: Intake
 
-    shootSpeed = tunable(1.0)
+    shootSpeed = tunable(0.5)
 
-    @timed_state(first=True, duration=1, must_finish=True, next_state="finish")
+    @timed_state(first=True, duration=0.5, must_finish=True, next_state="finish")
     def intakeFinirSortie(self):
         self.intake.set_intake_speed(self.shootSpeed)
         self.intake.set_output_speed(self.shootSpeed)
