@@ -53,14 +53,6 @@ kRobotToCam = wpimath.geometry.Transform3d(
 )
 
 RIKITIK_ENABLE_TEST_MODE : bool = False
-GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP : dict[int, Callable[[Lift], None]] = { # button are zero indexed, see +1 at usage
-    4: Lift.go_intake, # left bumper
-    5: Lift.go_deplacement, # right bumper
-    13: Lift.go_level1, # d-pad
-    15: Lift.go_level2, # d-pad
-    14: Lift.go_level3, # d-pad
-    12: Lift.go_level4, # d-pad
-}
 
 class MyRobot(MagicRobot):
     """
@@ -310,11 +302,23 @@ class MyRobot(MagicRobot):
                 return
 
     def teleopManualOperations(self):
+        if (self.gamepad_pilote is None) or (self.gamepad_pilote.getButtonCount() <= 0):
+            return
+
         # Manual lift
-        for button in GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP:
-            if self.gamepad_pilote.getRawButton(button + 1):
-                GAMEPAD_BUTTON_TO_LIFT_METHOD_MAP[button](self.lift)
-                break
+        tolerancePOV = 8
+        if self.gamepad_pilote.getLeftBumper():
+            self.lift.go_intake()
+        elif self.gamepad_pilote.getRightBumper():
+            self.lift.go_deplacement()
+        if abs(self.gamepad_pilote.getPOV() - 0) < tolerancePOV:
+            self.lift.go_level4()
+        elif abs(self.gamepad_pilote.getPOV() - 270) < tolerancePOV:
+            self.lift.go_level3()
+        elif abs(self.gamepad_pilote.getPOV() - 90) < tolerancePOV:
+            self.lift.go_level2()
+        elif abs(self.gamepad_pilote.getPOV() - 180) < tolerancePOV:
+            self.lift.go_level1()
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
