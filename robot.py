@@ -307,7 +307,7 @@ class MyRobot(MagicRobot):
         if (self.gamepad_pilote is None) or (self.gamepad_pilote.getButtonCount() <= 0):
             return
 
-        # Manual lift
+        # Shoot
         if self.gamepad_pilote.getAButton():
             self.snapAngle.engage(self.field_layout.getReefPosition())
             self.actionShoot.start(LiftTarget.L1)
