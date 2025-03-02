@@ -6,7 +6,7 @@ import wpilib
 def is_autonomous():
     return wpilib.DriverStation.isAutonomous()
 
-def float_egal(a: float, b: float, epsilon: float = 1e-4) -> bool:
+def float_equal(a: float, b: float, epsilon: float = 1e-4) -> bool:
     return abs(a - b) < epsilon
 
 def map_value(
