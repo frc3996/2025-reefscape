@@ -35,12 +35,12 @@ class Lift:
 
     # TODO ajuster les valeurs
     # les hauteurs sont en metres
-    hauteurDeplacement = tunable(0.4)
-    hauteurIntake = tunable(0.6)
-    hauteurLevel1 = tunable(0.55)
-    hauteurLevel2 = tunable(0.82)
-    hauteurLevel3 = tunable(1.28)
-    hauteurLevel4 = tunable(1.9)
+    hauteurDeplacement = tunable(0.2)
+    hauteurIntake = tunable(0.36)
+    hauteurLevel1 = tunable(0.35)
+    hauteurLevel2 = tunable(0.53)
+    hauteurLevel3 = tunable(0.83)
+    hauteurLevel4 = tunable(1.26)
 
     lift_p = tunable(12.0)
     lift_i = tunable(0.0)
@@ -167,7 +167,7 @@ class Lift:
         targetHeight = self.get_hauteur_cible()
 
         if currentHeight <= 0 and targetHeight <= 0 and not self.atZero():
-            self.liftMaster.set(-0.05)
+            self.liftMaster.set(-0.1)
         elif self.atZero() and targetHeight <= 0:
             self.liftMaster.set(0)
             self.stringEncoder.reset()
