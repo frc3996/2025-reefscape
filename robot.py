@@ -100,6 +100,7 @@ class MyRobot(MagicRobot):
 
     # SwerveDrive
     drivetrain: swervedrive.SwerveDrive
+    snapAngle: swervedrive.SnapAngle
 
     # FieldLayout
     field_layout: FieldLayout
@@ -375,6 +376,7 @@ class MyRobot(MagicRobot):
         if self.gamepad_pilote.getBButton():
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getAButton():
+            self.snapAngle.engage(self.field_layout.getReefPosition())
             self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
             self.actionShoot.start(LiftTarget.L3)

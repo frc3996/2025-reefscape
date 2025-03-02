@@ -86,7 +86,7 @@ class Chariot:
             self.move_back()
 
         # Safety, don't move if we're at the bottom or at the top
-        if self.lift.atZero():
+        if self.lift.atZero() or self.lift.get_lift_height() <= 0.05:
             # Don't you dare move back or front
             self.chariot_motor.set(0)
             return
