@@ -346,7 +346,9 @@ class MyRobot(MagicRobot):
             # self.actionClimb.done()
 
     def teleopAutonomousCycle(self):
-        if self.gamepad_pilote.getAButtonPressed():
+        if self.rikiStick is not None and self.rikiStick.getKillSwitch():
+            self.isAutoCycling = False
+        elif self.gamepad_pilote.getAButtonPressed():
             self.isAutoCycling = not self.isAutoCycling # toggle
 
         if self.isAutoCycling:

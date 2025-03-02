@@ -1,3 +1,4 @@
+from enum import Enum
 import math
 
 import rev
@@ -8,13 +9,16 @@ from magicbot import feedback, tunable, will_reset_to
 import constants
 from components.lift import Lift
 
-TARGET_STOP = 0
-TARGET_FRONT = 1
-TARGET_BACK = 2
+class ChariotTarget(Enum):
+    TARGET_STOP = 0
+    TARGET_FRONT = 1
+    TARGET_BACK = 2
+
 CURRENT_LIMIT_AMP = 100
 
 
 class Chariot:
+    __current_target: ChariotTarget = ChariotTarget.TARGET_STOP
     lift: Lift
     kChariotSpeed = tunable(0.7)
 
@@ -47,7 +51,7 @@ class Chariot:
             constants.DigitalIO.INTAKE_BACK_LIMIT_SWITCH
         )
 
-        __current_target = TARGET_FRONT
+        self.__current_target: ChariotTarget = ChariotTarget.TARGET_FRONT
 
     def move_back(self):
         # Only allow moving back when going toward intake height and that we're near it
@@ -59,10 +63,14 @@ class Chariot:
             # Allow moving back if we're near the intake height
             return
 
-        self.__current_target = TARGET_BACK
+        self.__current_target: ChariotTarget = ChariotTarget.TARGET_BACK
 
     def move_front(self):
-        self.__current_target = TARGET_FRONT
+        self.__current_target: ChariotTarget = ChariotTarget.TARGET_FRONT
+
+    @feedback
+    def get_chariot_target_str(self) -> str:
+        return self.__current_target.name
 
     @feedback
     def get_chariot_front_limit_switch(self) -> bool:
@@ -97,15 +105,15 @@ class Chariot:
             return
 
         # Actually move if we're not on the right state
-        if self.__current_target == TARGET_FRONT:
+        if self.__current_target == ChariotTarget.TARGET_FRONT:
             if not self.get_chariot_front_limit_switch():
                 self.chariot_motor.set(self.kChariotSpeed)
             else:
-                self.__current_target = TARGET_STOP
+                self.__current_target = ChariotTarget.TARGET_STOP
                 self.chariot_motor.set(0)
-        elif self.__current_target == TARGET_BACK:
+        elif self.__current_target == ChariotTarget.TARGET_BACK:
             if not self.get_chariot_back_limit_switch():
                 self.chariot_motor.set(-self.kChariotSpeed)
             else:
-                self.__current_target = TARGET_STOP
+                self.__current_target = ChariotTarget.TARGET_STOP
                 self.chariot_motor.set(0)
