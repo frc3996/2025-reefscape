@@ -62,7 +62,7 @@ class Chariot:
             # We're not moving where we need
             return
 
-        if abs(self.lift.get_lift_height() - self.lift.hauteurIntake) > 0.20:
+        if abs(self.lift.get_lift_height() - self.lift.hauteurIntake) > 0.4:
             # Allow moving back if we're near the intake height
             return
 

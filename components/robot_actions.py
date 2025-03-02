@@ -49,8 +49,7 @@ class ActionIntake(StateMachine):
             self.done()
 
         self.lift.go_intake()
-        if self.lift.atGoal():
-            self.next_state("start_intake")
+        self.next_state("start_intake")
 
     @state
     def start_intake(self):
