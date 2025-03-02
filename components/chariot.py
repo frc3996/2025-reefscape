@@ -1,6 +1,6 @@
 from enum import Enum
 import math
-
+from common.tools import float_equal
 import rev
 import wpilib
 import wpimath.units
@@ -58,7 +58,7 @@ class Chariot:
 
     def move_back(self):
         # Only allow moving back when going toward intake height and that we're near it
-        if self.lift.get_hauteur_cible() != self.lift.hauteurIntake:
+        if not float_equal(self.lift.get_hauteur_cible(), self.lift.hauteurIntake):
             # We're not moving where we need
             return
 
@@ -69,6 +69,9 @@ class Chariot:
         self.__current_target: ChariotTarget = ChariotTarget.TARGET_BACK
 
     def move_front(self):
+        if float_equal(self.lift.get_lift_height(), self.lift.hauteurLevel4):
+            # We're not moving where we need
+            return
         self.__current_target: ChariotTarget = ChariotTarget.TARGET_FRONT
 
     @feedback
@@ -90,10 +93,10 @@ class Chariot:
         """
 
         # Automatically move the head
-        if self.lift.get_hauteur_cible() != self.lift.hauteurIntake:
+        if not float_equal(self.lift.get_hauteur_cible(), self.lift.hauteurIntake):
             # We move back to the front
             self.move_front()
-        elif self.lift.get_hauteur_cible() == self.lift.hauteurIntake:
+        else:
             self.move_back()
 
         if self.__last_target != self.__current_target:
@@ -114,13 +117,13 @@ class Chariot:
 
         # Actually move if we're not on the right state
         if self.__current_target == ChariotTarget.TARGET_FRONT:
-            if self.__target_reached is False and not self.get_chariot_front_limit_switch():
+            if not self.__target_reached and not self.get_chariot_front_limit_switch():
                 self.chariot_motor.set(self.kChariotSpeed)
             else:
                 self.__target_reached = True
                 self.chariot_motor.set(0)
         elif self.__current_target == ChariotTarget.TARGET_BACK:
-            if self.__target_reached is False and not self.get_chariot_back_limit_switch():
+            if not self.__target_reached and not self.get_chariot_back_limit_switch():
                 self.chariot_motor.set(-self.kChariotSpeed)
             else:
                 self.__target_reached = True
