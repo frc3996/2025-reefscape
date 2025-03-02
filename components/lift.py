@@ -42,7 +42,7 @@ class Lift:
     hauteurLevel3 = tunable(0.83)
     hauteurLevel4 = tunable(1.26)
 
-    lift_p = tunable(12.0)
+    lift_p = tunable(11.0)
     lift_i = tunable(0.0)
     lift_d = tunable(0.0)
 
