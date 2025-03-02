@@ -13,8 +13,8 @@ SWERVES (FALCONS x4) LIME LIGHT
 """
 
 import math
-from typing import override
 from datetime import datetime
+from typing import override
 
 import ntcore
 import rev
@@ -43,8 +43,8 @@ from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
-from components.robot_actions import (ActionCycle, ActionIntake, ActionShoot,
-                                      ActionStow, ActionCycleAutonomous)
+from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
+                                      ActionIntake, ActionShoot, ActionStow)
 from components.swervemodule import SwerveModule
 
 kRobotToCam = wpimath.geometry.Transform3d(
@@ -219,12 +219,6 @@ class MyRobot(MagicRobot):
         pass
 
     @override
-    def autonomous(self):
-        """Pour les modes auto de MagicBot, voir le dossier ./autonomous"""
-        self.drivetrain.drive(0, 0, 0, True)
-        super().autonomous()
-
-    @override
     def teleopInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
@@ -240,16 +234,15 @@ class MyRobot(MagicRobot):
         #         camEstPose.estimatedPose, camEstPose.timestampSeconds
         #     )
 
-        pose: Pose2d
-        timestamp: float
-        stddevs: tuple[float, float, float]
-
-        ret = self.limelight_fr.getVisionMesurement()
-        if ret is not None:
-            pose, timestamp, stddevs = ret
-            self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
+        # pose: Pose2d
+        # timestamp: float
+        # stddevs: tuple[float, float, float]
+        # ret = self.limelight_fr.getVisionMesurement()
+        # if ret is not None:
+        #     pose, timestamp, stddevs = ret
+        #     self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
         self.drivetrain.updateOdometry()
-        # self.drivetrain.log()
+        self.drivetrain.log()
 
     @override
     def teleopPeriodic(self) -> None:
@@ -267,15 +260,17 @@ class MyRobot(MagicRobot):
         # self.teleopCycle()
 
     def teleopTerrainEditMode(self):
-        assert(self.rikiStick.isEditMode())
+        assert self.rikiStick.isEditMode()
         self.teleopDrive()
         if self.rikiStick.getKillSwitch():
             self.rikiStick.disableEditMode()
-            self.reefscape.save("terrain-" + datetime.now().strftime("%Y-%m-%d.%H.%M.%S") + ".json")
+            self.reefscape.save(
+                "terrain-" + datetime.now().strftime("%Y-%m-%d.%H.%M.%S") + ".json"
+            )
             return
         team = self.rikiStick.getEditModeTeam()
-        assert(team != "")
-        # Reefs        
+        assert team != ""
+        # Reefs
         for i in range(1, 13):
             if self.rikiStick.isReefButtonPressed(i):
                 self.reefscape.setReefPose(team, i, self.drivetrain.getPose())
@@ -295,7 +290,9 @@ class MyRobot(MagicRobot):
                     slideID = 4
 
                 if slideID != 0:
-                    self.reefscape.setStationSlidePose(team, i, slideID, self.drivetrain.getPose())
+                    self.reefscape.setStationSlidePose(
+                        team, i, slideID, self.drivetrain.getPose()
+                    )
                     return
         # Cages
         for i in range(1, 4):
