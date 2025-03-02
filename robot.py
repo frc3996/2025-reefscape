@@ -238,15 +238,16 @@ class MyRobot(MagicRobot):
         #     self.drivetrain.addVisionPoseEstimate(
         #         camEstPose.estimatedPose, camEstPose.timestampSeconds
         #     )
-        pose: Pose2d
-        timestamp: float
-        stddevs: tuple[float, float, float]
-        ret = self.limelight_fr.getVisionMesurement()
-        if ret is not None:
-            pose, timestamp, stddevs = ret
-            self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
+
+        # pose: Pose2d
+        # timestamp: float
+        # stddevs: tuple[float, float, float]
+        # ret = self.limelight_fr.getVisionMesurement()
+        # if ret is not None:
+        #     pose, timestamp, stddevs = ret
+        #     self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
         self.drivetrain.updateOdometry()
-        # self.drivetrain.log()
+        self.drivetrain.log()
 
     @override
     def teleopPeriodic(self) -> None:
@@ -324,7 +325,7 @@ class MyRobot(MagicRobot):
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
-            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.snapAngle.engage(self.field_layout.getCoralPosition())
             self.actionIntake.engage()
 
         # Deposit coral
