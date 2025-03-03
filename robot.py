@@ -368,6 +368,12 @@ class MyRobot(MagicRobot):
         ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
         rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
+        deltaHauteur = self.lift.get_lift_height() - self.lift.hauteurDeplacement
+        if deltaHauteur > 0:
+            scale = 1 - deltaHauteur / (self.lift.hauteurLevel4 - self.lift.hauteurDeplacement)
+            xSpeed *= scale
+            ySpeed *= scale
+
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
 
     # Scratchpad test mode, enable it by setting RIKITIK_ENABLE_TEST_MODE to True at the top of the file
