@@ -46,6 +46,8 @@ class Lift:
     lift_i = tunable(0.0)
     lift_d = tunable(0.0)
 
+    ignoringInput = False
+
     # hauteur cible
     hauteurCible = 0  # TODO quelque chose d'intelligent ici
 
@@ -137,7 +139,8 @@ class Lift:
         self.__aller_a_hauteur(self.hauteurDeplacement)
 
     def __aller_a_hauteur(self, hauteur: float):
-        self.hauteurCible = hauteur
+        if not self.ignoringInput:
+            self.hauteurCible = hauteur
 
     @feedback
     def get_lift_height(self) -> float:
@@ -168,10 +171,12 @@ class Lift:
 
         if currentHeight <= 0 and targetHeight <= 0 and not self.atZero():
             self.liftMaster.set(-0.1)
+            self.ignoringInput = True
         elif self.atZero() and targetHeight <= 0:
             self.liftMaster.set(0)
             self.stringEncoder.reset()
             self.liftPIDController.reset(0)
+            self.ignoringInput = False
         else:
             if self.__limit_height and targetHeight >= self.hauteurLevel4 - 0.3:
                 targetHeight = targetHeight - 0.3
