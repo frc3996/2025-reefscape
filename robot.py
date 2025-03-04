@@ -34,6 +34,8 @@ from autonomous.trajectory_follower import TrajectoryFollower
 from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
+from common.limelight_helpers import PoseEstimate, LimelightHelpers
+
 from components.chariot import Chariot
 # from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
@@ -41,6 +43,7 @@ from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
+from components.visionsystem import VisionSystem
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
@@ -107,8 +110,9 @@ class MyRobot(MagicRobot):
     reefscape: Reefscape
 
     # Vision
-    limelight_fr: LimeLightVision
-    limelight_rl: LimeLightVision
+    limelight_front: LimeLightVision
+    limelight_back: LimeLightVision
+    visionSystem : VisionSystem
 
     # Rikistick
     rikiStick: RikiStick
@@ -185,20 +189,6 @@ class MyRobot(MagicRobot):
             inverted=False,
         )
 
-        # PhotonVision
-        # self.cam = PhotonCamera("YOUR CAMERA NAME")
-        # self.camPoseEst = PhotonPoseEstimator(
-        #     AprilTagFieldLayout.loadField(AprilTagField.kDefaultField),
-        #     PoseStrategy.LOWEST_AMBIGUITY,
-        #     self.cam,
-        #     kRobotToCam,
-        # )
-
-        # Climb
-        # self.climb = Climb()
-        self.limelight_fr = LimeLightVision("limelight_fr")
-        self.limelight_rl = LimeLightVision("limelight_rl")
-
         # General
         self.gamepad_pilote = wpilib.XboxController(0)
 
@@ -208,18 +198,22 @@ class MyRobot(MagicRobot):
     @override
     def disabledInit(self) -> None:
         pass
+        self.limelight_front.light_off()
+        self.limelight_back.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
 
     @override
     def disabledPeriodic(self):
         """Mets à jours le dashboard, même quand le robot est désactivé"""
-        # self.limelight_vision.execute(()
+        self.limelight_front.light_off()
+        self.limelight_back.light_off()
         pass
 
     @override
     def autonomousInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
-        # self.limelight_vision.light_off()
+        self.limelight_front.light_off()
+        self.limelight_back.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
         pass
 
@@ -228,24 +222,21 @@ class MyRobot(MagicRobot):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
         self.pdp.clearStickyFaults()
-        # self.limelight_vision.light_off()
+        self.limelight_front.light_off()
+        self.limelight_back.light_off()
         # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
 
     @override
-    def robotPeriodic(self) -> None:
-        # camEstPose = self.camPoseEst.update()
-        # if camEstPose:
-        #     self.drivetrain.addVisionPoseEstimate(
-        #         camEstPose.estimatedPose, camEstPose.timestampSeconds
-        #     )
+    def robotInit(self):
+        return super().robotInit()
 
-        # pose: Pose2d
-        # timestamp: float
-        # stddevs: tuple[float, float, float]
-        # ret = self.limelight_fr.getVisionMesurement()
-        # if ret is not None:
-        #     pose, timestamp, stddevs = ret
-        #     self.drivetrain.poseEst.addVisionMeasurement(pose, timestamp, stddevs)
+    @override
+    def robotPeriodic(self) -> None:
+        if  self.visionSystem is not None and not self.visionSystem.ok(): # ghetto init ahhhhh
+            print("*** Initialisation du systeme de vision ***")
+            self.limelight_front.setCameraName("limelight_front")
+            self.limelight_back.setCameraName("limelight_back")
+            self.visionSystem.setupVision([self.limelight_front, self.limelight_back], False)
         self.drivetrain.updateOdometry()
         self.drivetrain.log()
 
@@ -350,8 +341,6 @@ class MyRobot(MagicRobot):
 
         if self.isAutoCycling:
             self.actionCycle.engage()
-        elif self.actionCycle.is_executing:
-            self.actionCycle.done()
 
     def teleopDrive(self):
         leftY = gamepad_helper.apply_deadzone(
