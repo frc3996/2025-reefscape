@@ -116,6 +116,8 @@ class Lift:
                 self.kMaxSpeed, self.kMaxAccel
             ),
         )
+        self.hauteurCible = self.get_lift_height()
+        self.liftPIDController.reset(self.hauteurCible)
 
     def limit_height(self):
         self.__limit_height = True
