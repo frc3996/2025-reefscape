@@ -18,24 +18,14 @@ class VisionSystem:
     drivetrain : SwerveDrive
     gyro: Gyro
 
-    def __init__(self):
-        pass
-
-    def ok(self):
-        return len(self.__cameras) > 0
-
-    def setupVision(self, cameras : List[LimeLightVision], doThreads : bool):
-        assert len(cameras) > 0
+    def __init__(self, cameras : List[LimeLightVision], doThreads : bool):
         self.__cameras = cameras
         self.__executor = None
         self.__threaded = doThreads
         if doThreads:
             self.__executor = futures.ThreadPoolExecutor()
 
-    def execute(self):
-
-        return
-
+    def miseAjour(self):
         if self.gyro.yawSpeed() > 720:
             print("VisionSystem : skipping, yaw rot speed too high")
             return

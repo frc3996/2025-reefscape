@@ -195,6 +195,10 @@ class MyRobot(MagicRobot):
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
+        self.limelight_front = LimeLightVision("limelight-front")
+        self.limelight_back = LimeLightVision("limelight-back")
+        self.visionSystem = VisionSystem([self.limelight_front, self.limelight_back], False)
+
     @override
     def disabledInit(self) -> None:
         pass
@@ -232,11 +236,7 @@ class MyRobot(MagicRobot):
 
     @override
     def robotPeriodic(self) -> None:
-        if  self.visionSystem is not None and not self.visionSystem.ok(): # ghetto init ahhhhh
-            print("*** Initialisation du systeme de vision ***")
-            self.limelight_front.setCameraName("limelight_front")
-            self.limelight_back.setCameraName("limelight_back")
-            self.visionSystem.setupVision([self.limelight_front, self.limelight_back], False)
+        self.visionSystem.miseAjour()
         self.drivetrain.updateOdometry()
         self.drivetrain.log()
 

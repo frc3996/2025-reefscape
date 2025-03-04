@@ -5,10 +5,7 @@ from wpimath.geometry import Pose2d, Rotation2d
 from common.limelight_helpers import PoseEstimate, LimelightHelpers
 
 class LimeLightVision:
-    def __init__(self):
-        self.__cameraName = ""
-
-    def setCameraName(self, name : str):
+    def __init__(self, name : str):
         self.__cameraName = name
 
     def light_pipeline(self):
