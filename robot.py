@@ -14,7 +14,7 @@ SWERVES (FALCONS x4) LIME LIGHT
 
 import math
 from datetime import datetime
-from typing import override, Dict, Callable
+from typing import Callable, Dict, override
 
 import ntcore
 import rev
@@ -34,8 +34,7 @@ from autonomous.trajectory_follower import TrajectoryFollower
 from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper
-from common.limelight_helpers import PoseEstimate, LimelightHelpers
-
+from common.limelight_helpers import LimelightHelpers, PoseEstimate
 from components.chariot import Chariot
 # from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
@@ -43,19 +42,20 @@ from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
-from components.visionsystem import VisionSystem
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
                                       ActionIntake, ActionShoot, ActionStow)
 from components.swervemodule import SwerveModule
+from components.visionsystem import VisionSystem
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
     wpimath.geometry.Rotation3d.fromDegrees(0.0, -30.0, 0.0),
 )
 
-RIKITIK_ENABLE_TEST_MODE : bool = False
+RIKITIK_ENABLE_TEST_MODE: bool = False
+
 
 class MyRobot(MagicRobot):
     """
@@ -112,7 +112,7 @@ class MyRobot(MagicRobot):
     # Vision
     limelight_front: LimeLightVision
     limelight_back: LimeLightVision
-    visionSystem : VisionSystem
+    visionSystem: VisionSystem
 
     # Rikistick
     rikiStick: RikiStick
@@ -197,7 +197,7 @@ class MyRobot(MagicRobot):
 
         self.limelight_front = LimeLightVision("limelight-front")
         self.limelight_back = LimeLightVision("limelight-back")
-        self.visionSystem = VisionSystem([self.limelight_front, self.limelight_back], False)
+        self.visionSystem_cameras = [self.limelight_front, self.limelight_back]
 
     @override
     def disabledInit(self) -> None:
@@ -252,7 +252,7 @@ class MyRobot(MagicRobot):
             self.teleopTerrainEditMode()
         else:
             self.teleopManualOperations()
-            #self.teleopAutonomousCycle()
+            # self.teleopAutonomousCycle()
 
     def teleopTerrainEditMode(self):
         assert self.rikiStick.isEditMode()
@@ -315,7 +315,9 @@ class MyRobot(MagicRobot):
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
             stationPose = self.field_layout.getCoralPosition()
-            self.snapAngle.engage(stationPose.rotateBy(wpimath.geometry.Rotation2d.fromDegrees(180)))
+            self.snapAngle.engage(
+                stationPose.rotateBy(wpimath.geometry.Rotation2d.fromDegrees(180))
+            )
             self.actionIntake.engage()
 
         # Deposit coral
@@ -337,7 +339,7 @@ class MyRobot(MagicRobot):
         if self.rikiStick is not None and self.rikiStick.getKillSwitch():
             self.isAutoCycling = False
         elif self.gamepad_pilote.getAButtonPressed():
-            self.isAutoCycling = not self.isAutoCycling # toggle
+            self.isAutoCycling = not self.isAutoCycling  # toggle
 
         if self.isAutoCycling:
             self.actionCycle.engage()
@@ -359,7 +361,9 @@ class MyRobot(MagicRobot):
 
         deltaHauteur = self.lift.get_lift_height() - self.lift.hauteurDeplacement
         if deltaHauteur > 0:
-            scale = 1 - deltaHauteur / (self.lift.hauteurLevel4 - self.lift.hauteurDeplacement)
+            scale = 1 - deltaHauteur / (
+                self.lift.hauteurLevel4 - self.lift.hauteurDeplacement
+            )
             xSpeed *= scale
             ySpeed *= scale
 
