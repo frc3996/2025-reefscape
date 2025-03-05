@@ -107,7 +107,7 @@ class TrajectoryFollower(StateMachine):
         interior: list[Translation2d] = []  # Add interior waypoints if desired.
 
         # Get the real robot position
-        currentPos: Pose2d = self.drivetrain.poseEst.getEstimatedPosition()
+        currentPos: Pose2d = self.drivetrain.getPose()
         currentTime = wpilib.Timer.getFPGATimestamp()
 
         # Find the heading angle, this is a holonomic drive!

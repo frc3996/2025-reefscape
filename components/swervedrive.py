@@ -25,16 +25,16 @@
 
 import math
 from typing import final, override
-from magicbot import tunable
+
 import ntcore
 import wpimath.estimator
 import wpimath.geometry
 import wpimath.kinematics
 import wpimath.units
-from wpimath import controller, trajectory
-from magicbot import StateMachine, state, will_reset_to
+from magicbot import StateMachine, state, tunable, will_reset_to
 from pathplannerlib.commands import DriveFeedforwards, Pose2d
 from pathplannerlib.trajectory import SwerveModuleState
+from wpimath import controller, trajectory
 
 import constants
 from components.gyro import Gyro
@@ -85,7 +85,7 @@ class SwerveDrive:
 
         self.gyro.reset()
 
-        self.poseEst = wpimath.estimator.SwerveDrive4PoseEstimator(
+        self._poseEst = wpimath.estimator.SwerveDrive4PoseEstimator(
             self.kinematics,
             self.gyro.getRotation2d(),
             (
@@ -96,7 +96,6 @@ class SwerveDrive:
             ),
             kInitialPose,
         )
-
 
         # LOG
         nt = ntcore.NetworkTableInstance.getDefault()
@@ -130,7 +129,7 @@ class SwerveDrive:
         )
 
     def getPose(self) -> Pose2d:
-        return self.poseEst.getEstimatedPosition()
+        return self._poseEst.getEstimatedPosition()
 
     def drive_auto(
         self,
@@ -259,7 +258,7 @@ class SwerveDrive:
 
     def updateOdometry(self) -> None:
         """Updates the field relative position of the robot."""
-        _ = self.poseEst.update(
+        _ = self._poseEst.update(
             self.gyro.getRotation2d(),
             (
                 self.frontLeft.getPosition(),
@@ -270,12 +269,16 @@ class SwerveDrive:
         )
 
     def addVisionPoseEstimate(
-        self, pose: wpimath.geometry.Pose3d, timestamp: float
+        self,
+        pose: wpimath.geometry.Pose2d,
+        timestamp: float,
+        stddevs: tuple[float, float, float],
     ) -> None:
-        self.poseEst.addVisionMeasurement(pose.toPose2d(), timestamp)
+        print("--addVisionPoseEstimate--", pose, timestamp, stddevs)
+        self._poseEst.addVisionMeasurement(pose, timestamp, stddevs)
 
     def resetPose(self, pose: wpimath.geometry.Pose2d = kInitialPose) -> None:
-        self.poseEst.resetPosition(
+        self._poseEst.resetPosition(
             self.gyro.getRotation2d(),
             (
                 self.frontLeft.getPosition(),
@@ -295,7 +298,7 @@ class SwerveDrive:
         ]
 
     def getModulePoses(self) -> list[wpimath.geometry.Pose2d]:
-        p = self.poseEst.getEstimatedPosition()
+        p = self._poseEst.getEstimatedPosition()
         flTrans = wpimath.geometry.Transform2d(
             self.frontLeftLocation, self.frontLeft.getAbsoluteHeading()
         )
@@ -328,7 +331,7 @@ class SwerveDrive:
 
     def log(self):
         # The pose
-        self.estimatedPositionPub.set(self.poseEst.getEstimatedPosition())
+        self.estimatedPositionPub.set(self._poseEst.getEstimatedPosition())
 
         # The current module state
         self.swerveModuleStatePub.set(self.getModuleStates())
@@ -368,9 +371,13 @@ class SnapAngle(StateMachine):
     max_angular_velocity = tunable(math.degrees(math.pi * 2) * 2)
     max_angular_acceleration = tunable(math.degrees(math.pi * 5) * 2)
 
-
     @override
-    def engage(self, target_pose: wpimath.geometry.Pose2d, initial_state: str | None = None, force: bool = False) -> None:
+    def engage(
+        self,
+        target_pose: wpimath.geometry.Pose2d,
+        initial_state: str | None = None,
+        force: bool = False,
+    ) -> None:
         self.target_pose: wpimath.geometry.Pose2d = target_pose
         return super().engage(initial_state, force)
 
@@ -378,7 +385,7 @@ class SnapAngle(StateMachine):
         self.angle_pid = controller.PIDController(
             self.angle_kp,
             self.angle_ki,
-            self.angle_kd
+            self.angle_kd,
             # trajectory.TrapezoidProfile.Constraints(
             #     self.max_angular_velocity, self.max_angular_acceleration
             # ),
@@ -394,12 +401,17 @@ class SnapAngle(StateMachine):
             self.initialize_pid()
 
         omega = self.angle_pid.calculate(
-                self.drivetrain.getPose().rotation().degrees(), self.target_pose.rotation().degrees()
+            self.drivetrain.getPose().rotation().degrees(),
+            self.target_pose.rotation().degrees(),
         )
         omega = max(min(omega, 2), -2)
         if abs(omega) <= 0.1:
-             # self.angle_pid.reset(self.drivetrain.getPose().rotation().degrees())
+            # self.angle_pid.reset(self.drivetrain.getPose().rotation().degrees())
             omega = 0
-        print(omega, self.drivetrain.getPose().rotation().degrees() - self.target_pose.rotation().degrees())
+        print(
+            omega,
+            self.drivetrain.getPose().rotation().degrees()
+            - self.target_pose.rotation().degrees(),
+        )
         cs = wpimath.kinematics.ChassisSpeeds(0, 0, omega)
         self.drivetrain.drive_auto(cs)
