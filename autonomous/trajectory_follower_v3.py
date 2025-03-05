@@ -145,7 +145,7 @@ class ActionPathPlannerV3(StateMachine):
         self.drivetrain.drive_auto(chassisSpeeds)
         self.next_state("generate")
 
-    @timed_state(duration=2, next_state="generate")
+    @timed_state(duration=5, next_state="generate")
     def wait_for_path(self):
         print("WAITING")
         if Pathfinding.isNewPathAvailable():

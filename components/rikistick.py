@@ -1,9 +1,11 @@
 from typing import Callable
+
 import wpilib
 from magicbot import feedback, tunable
+
 from components.lift import LiftTarget
 
-RIKISTICK2_BUTTON_TO_REEF_MAP : dict[int, int] = { # zero-based, voir +1 ci-dessous.
+RIKISTICK2_BUTTON_TO_REEF_MAP: dict[int, int] = {  # zero-based, voir +1 ci-dessous.
     1: 1,
     0: 2,
     8: 3,
@@ -15,21 +17,24 @@ RIKISTICK2_BUTTON_TO_REEF_MAP : dict[int, int] = { # zero-based, voir +1 ci-dess
     14: 9,
     13: 10,
     4: 11,
-    2: 12
+    2: 12,
 }
 
-RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP : dict[int, LiftTarget] = { # zero-based, voir +1 ci-dessous.
-    2: LiftTarget.L1,
-    15: LiftTarget.L2,
-    14: LiftTarget.L3,
-    13: LiftTarget.L4,
-}
+RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP: dict[int, LiftTarget] = (
+    {  # zero-based, voir +1 ci-dessous.
+        2: LiftTarget.L1,
+        15: LiftTarget.L2,
+        14: LiftTarget.L3,
+        13: LiftTarget.L4,
+    }
+)
+
 
 class RikiStick:
     editMode_0Non_1Red_2Blue = tunable(0)
-    reefTarget = 1 # [1, 12]
-    stationTarget = 1 # [1, 2]
-    liftHeightTarget : LiftTarget = LiftTarget.DEPLACEMENT
+    reefTarget = 12  # [1, 12]
+    stationTarget = 2  # [1, 2]
+    liftHeightTarget: LiftTarget = LiftTarget.DEPLACEMENT
 
     def __init__(self) -> None:
         self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
@@ -51,7 +56,7 @@ class RikiStick:
 
     @feedback
     def getCoralStationTarget(self) -> int:
-        assert(self.stationTarget in range(1, 3))
+        assert self.stationTarget in range(1, 3)
         return self.stationTarget
 
     @feedback
@@ -63,13 +68,13 @@ class RikiStick:
 
     @feedback
     def getReefTarget(self) -> int:
-        assert(self.reefTarget in range(1, 13))
+        assert self.reefTarget in range(1, 13)
         return self.reefTarget
-    
+
     def getKillSwitch(self) -> bool:
         return self.rikistick1.getRawButton(5)
-    
-    def isReefButtonPressed(self, reef: int) -> bool: # reef: [1, 12]
+
+    def isReefButtonPressed(self, reef: int) -> bool:  # reef: [1, 12]
         for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
             if self.rikistick2.getRawButton(button + 1):
                 if RIKISTICK2_BUTTON_TO_REEF_MAP[button] == reef:
@@ -77,7 +82,7 @@ class RikiStick:
         return False
 
     # En mode edit, les boutons du light target sont utilisés pour configurer la pose des cages
-    def isCageButtonPressed_EDIT_MODE(self, cage: int) -> bool: # cage: [1, 3]
+    def isCageButtonPressed_EDIT_MODE(self, cage: int) -> bool:  # cage: [1, 3]
         for button in RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP:
             if self.rikistick1.getRawButton(button + 1):
                 liftTarget = RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP[button]
@@ -89,7 +94,7 @@ class RikiStick:
                     return True
         return False
 
-    def isStationButtonPressed(self, station: int) -> bool: # station: [1, 2]
+    def isStationButtonPressed(self, station: int) -> bool:  # station: [1, 2]
         return self.rikistick1.getRawButton(station)
 
     def execute(self):

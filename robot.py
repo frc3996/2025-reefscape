@@ -42,13 +42,12 @@ from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
-from components.limelight import LimeLightVision
+from components.limelight_me import LimeLightVision
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
                                       ActionIntake, ActionShoot, ActionStow)
 from components.swervemodule import SwerveModule
-from components.visionsystem import VisionSystem
 
 kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
@@ -109,11 +108,6 @@ class MyRobot(MagicRobot):
     # FieldLayout
     field_layout: FieldLayout
     reefscape: Reefscape
-
-    # Vision
-    limelightFront: LimeLightVision
-    limelightBack: LimeLightVision
-    visionSystem: VisionSystem
 
     # Rikistick
     rikiStick: RikiStick
@@ -196,40 +190,8 @@ class MyRobot(MagicRobot):
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
-        self.limelightFront = LimeLightVision("limelight-front")
         self.limelightBack = LimeLightVision("limelight-back")
-        # self.visionSystem_cameras = [self.limelight_front, self.limelight_back]
-
-    # @override
-    # def disabledInit(self) -> None:
-    #     pass
-    #     self.limelight_front.light_off()
-    #     self.limelight_back.light_off()
-    #     # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
-
-    # @override
-    # def disabledPeriodic(self):
-    #     """Mets à jours le dashboard, même quand le robot est désactivé"""
-    #     self.limelight_front.light_off()
-    #     self.limelight_back.light_off()
-    #     pass
-    #
-    # @override
-    # def autonomousInit(self):
-    #     """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
-    #     self.limelight_front.light_off()
-    #     self.limelight_back.light_off()
-    #     # self.arduino_light.set_leds(LedMode.Solid, 0, 255, 0)
-    #     pass
-    #
-    # @override
-    # def teleopInit(self):
-    #     """Cette fonction est appelée une seule fois lorsque le robot en
-    #     tre en mode téléopéré."""
-    #     self.pdp.clearStickyFaults()
-    #     self.limelight_front.light_off()
-    #     self.limelight_back.light_off()
-    #     # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
+        self.limelightFront = LimeLightVision("limelight-front")
 
     @override
     def robotInit(self):
@@ -237,56 +199,33 @@ class MyRobot(MagicRobot):
 
     @override
     def robotPeriodic(self) -> None:
-        self.visionSystem.miseAjour()
+        backMesurement = self.limelightBack.getVisionMesurement(self.drivetrain)
+        _ = self.limelightFront.getVisionMesurement(
+            self.drivetrain, backMesurement, True
+        )
+
         self.drivetrain.updateOdometry()
-        self.drivetrain.log()
+        # self.drivetrain.log()
 
     @override
     def disabledInit(self) -> None:
-        # for camera in self.visionSystem_cameras:
-        #     LimelightHelpers.set_imu_mode(camera.cameraName, 1)
         pass
 
     @override
     def disabledPeriodic(self):
         """Mets à jours le dashboard, même quand le robot est désactivé"""
-        # for camera in self.visionSystem_cameras:
-        #
-        #     ret = camera.getVisionMesurementMT1()
-        #     if ret is not None:
-        #         pose: Pose2d
-        #         timestamp: float
-        #         stddevs: tuple[float, float, float]
-        #         pose, timestamp, stddevs = ret
-        #
-        #         self.drivetrain.addVisionPoseEstimate(pose, timestamp, stddevs)
-        #
-        #         LimelightHelpers.set_robot_orientation(
-        #             camera.cameraName,
-        #             self.drivetrain.getPose().rotation().degrees(),
-        #             0,
-        #             0,
-        #             0,
-        #             0,
-        #             0,
-        #         )
         pass
 
     @override
     def autonomousInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
-        # for camera in self.visionSystem_cameras:
-        #     LimelightHelpers.set_imu_mode(camera.cameraName, 2)
         pass
 
     @override
     def teleopInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
-        # for camera in self.visionSystem_cameras:
-        #     LimelightHelpers.set_imu_mode(camera.cameraName, 2)
         self.pdp.clearStickyFaults()
-        # self.arduino_light.set_leds(LedMode.Solid, 0, 0, 255)
 
     @override
     def teleopPeriodic(self) -> None:
@@ -386,8 +325,12 @@ class MyRobot(MagicRobot):
     def teleopAutonomousCycle(self):
         if self.rikiStick is not None and self.rikiStick.getKillSwitch():
             self.isAutoCycling = False
-        elif self.gamepad_pilote.getAButtonPressed():
-            self.isAutoCycling = not self.isAutoCycling  # toggle
+        elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
+            print("Autocycle")
+            # self.isAutoCycling = not self.isAutoCycling  # toggle
+            self.isAutoCycling = True
+        else:
+            self.isAutoCycling = False
 
         if self.isAutoCycling:
             self.actionCycle.engage()

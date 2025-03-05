@@ -267,6 +267,7 @@ class SwerveDrive:
                 self.backRight.getPosition(),
             ),
         )
+        self.estimatedPositionPub.set(self._poseEst.getEstimatedPosition())
 
     def addVisionPoseEstimate(
         self,
@@ -274,7 +275,7 @@ class SwerveDrive:
         timestamp: float,
         stddevs: tuple[float, float, float],
     ) -> None:
-        print("--addVisionPoseEstimate--", pose, timestamp, stddevs)
+        # print("--addVisionPoseEstimate--", pose, timestamp, stddevs)
         self._poseEst.addVisionMeasurement(pose, timestamp, stddevs)
 
     def resetPose(self, pose: wpimath.geometry.Pose2d = kInitialPose) -> None:
@@ -331,7 +332,7 @@ class SwerveDrive:
 
     def log(self):
         # The pose
-        self.estimatedPositionPub.set(self._poseEst.getEstimatedPosition())
+        # self.estimatedPositionPub.set(self._poseEst.getEstimatedPosition())
 
         # The current module state
         self.swerveModuleStatePub.set(self.getModuleStates())

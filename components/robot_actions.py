@@ -1,6 +1,6 @@
-from dataclasses import field
 import os
-from typing import Callable, override, List
+from dataclasses import field
+from typing import Callable, List, override
 
 import wpilib
 from magicbot import StateMachine, state, timed_state, tunable
@@ -17,8 +17,8 @@ from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
-from components.swervedrive import SwerveDrive
 from components.reefscape import Reefscape
+from components.swervedrive import SwerveDrive
 
 
 class ActionStow(StateMachine):
@@ -89,10 +89,10 @@ class ActionShoot(StateMachine):
             LiftTarget.INTAKE: Lift.go_intake,
         }
 
-    def start(self, target: LiftTarget) -> None:
+    def start(self, target: LiftTarget, initial_state=None) -> None:
         assert target in self.TARGETS
         self.current_target = target
-        return super().engage()
+        return super().engage(initial_state)
 
     @state(first=True)
     def move_lift(self, initial_call: bool):
@@ -108,6 +108,23 @@ class ActionShoot(StateMachine):
 
         if self.lift.atGoal() and self.chariot.target_reached:
             self.next_state("wait_release")
+        else:
+            print("ActionShoot: Waiting for lift")
+
+    @state
+    def move_lift_auto(self, initial_call: bool):
+        print("ActionShoot", "move_lift")
+        self.ready_to_shoot = False
+        if self.current_target not in self.TARGETS:
+            print("INVALID TARGET FOR ActionShoot")
+            self.done()
+
+        if initial_call:
+            self.TARGETS[self.current_target](self.lift)
+            return
+
+        if self.lift.atGoal() and self.chariot.target_reached:
+            self.next_state("shoot_object")
         else:
             print("ActionShoot: Waiting for lift")
 
@@ -175,22 +192,27 @@ class ActionPathTester(StateMachine):
     def done(self):
         super().done()
 
+
 class ActionCycleBase(StateMachine):
     intake: Intake
-    actionIntakeEntree: ActionIntakeEntree
-    actionIntakeSortie: ActionIntakeSortie
     actionPathPlannerV3: ActionPathPlannerV3
+    actionIntake: ActionIntake
+    actionShoot: ActionShoot
     field_layout: FieldLayout
 
     ### MUST OVERRIDE in ActionCycle concrete classes ####
     def get_reef_position(self) -> Pose2d | None:
         raise NotImplementedError()
+
     def pop_reef_position(self) -> None:
         raise NotImplementedError()
+
     def get_coral_position(self) -> Pose2d | None:
         raise NotImplementedError()
+
     def pop_coral_position(self) -> None:
         raise NotImplementedError()
+
     ######################################################
 
     @state
@@ -213,13 +235,14 @@ class ActionCycleBase(StateMachine):
     @state
     def engage_deposit(self):
         print("ActionCycle: engage_deposit")
-        self.actionIntakeSortie.execute()
+        # TODO: Grab position from rikistick
+        self.actionShoot.start(LiftTarget.L2, "move_lift_auto")
         self.next_state("wait_deposit")
 
     @state
     def wait_deposit(self):
-        self.actionIntakeSortie.execute()
-        if not self.actionIntakeSortie.is_executing:
+        self.actionShoot.engage("move_lift_auto")
+        if not self.actionShoot.is_executing:
             self.next_state("move_coral")
 
     @state
@@ -242,15 +265,16 @@ class ActionCycleBase(StateMachine):
     @state
     def engage_intake(self):
         print("ActionCycle: engage_intake")
-        self.actionIntakeEntree.execute()
+        self.actionIntake.engage()
         self.next_state("wait_intake")
 
     @state
     def wait_intake(self):
         print("ActionCycle: engage_intake")
-        self.actionIntakeEntree.execute()
-        if not self.actionIntakeEntree.is_executing:
+        self.actionIntake.engage()
+        if not self.actionIntake.is_executing:
             self.next_state("move_reef")
+
 
 class ActionCycle(ActionCycleBase):
     @state(first=True)
@@ -264,28 +288,34 @@ class ActionCycle(ActionCycleBase):
     @override
     def get_reef_position(self) -> Pose2d | None:
         return self.field_layout.getReefPosition()
+
     @override
     def pop_reef_position(self) -> None:
         pass
+
     @override
     def get_coral_position(self) -> Pose2d | None:
         return self.field_layout.getCoralPosition()
+
     @override
     def pop_coral_position(self) -> None:
         pass
 
+
 class ActionCycleAutonomous(ActionCycleBase):
 
     drivetrain: SwerveDrive
-    reefscape : Reefscape
-    autonomousActions : List[str] = []
+    reefscape: Reefscape
+    autonomousActions: List[str] = []
     AUTONOMOUS_ACTIONS_FILE = "autonomous_actions.txt"
 
     def __init__(self):
         self.autonomousActions = []
-        pathFichier = os.path.join(os.path.dirname(__file__), r"..", self.AUTONOMOUS_ACTIONS_FILE)
+        pathFichier = os.path.join(
+            os.path.dirname(__file__), r"..", self.AUTONOMOUS_ACTIONS_FILE
+        )
         try:
-            with open(pathFichier, 'r') as fichier:
+            with open(pathFichier, "r") as fichier:
                 for line in fichier:
                     line = line.strip()
                     if len(line) > 0 and line[0] != "#":
@@ -293,7 +323,9 @@ class ActionCycleAutonomous(ActionCycleBase):
         except FileNotFoundError:
             print(self.AUTONOMOUS_ACTIONS_FILE + " not found.")
         if not self._validate_autonomous_actions():
-            print("Invalid autonomous actions sequence. Autonomous actions will not be executed.")
+            print(
+                "Invalid autonomous actions sequence. Autonomous actions will not be executed."
+            )
             self.autonomousActions = []
 
     @state(first=True)
@@ -358,7 +390,9 @@ class ActionCycleAutonomous(ActionCycleBase):
             return None
         else:
             station = int(self.autonomousActions[0][1:])
-            pose = self.reefscape.getClosestCoralStationSlide(station, self.drivetrain.getPose())
+            pose = self.reefscape.getClosestCoralStationSlide(
+                station, self.drivetrain.getPose()
+            )
             # print("Station " + str(station) + " @ x: " + str(pose.translation().x) + " y: " + str(pose.translation().y))
             return pose
 
