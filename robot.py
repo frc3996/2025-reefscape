@@ -394,15 +394,12 @@ class MyRobot(MagicRobot):
             self.rightXFilter.calculate(self.gamepad_pilote.getRightX()), 0.2
         )
 
-        xSpeed = -1.0 * leftY * swervedrive.kMaxSpeed
-        ySpeed = -1.0 * leftX * swervedrive.kMaxSpeed
+        xSpeed = leftY * swervedrive.kMaxSpeed
+        ySpeed = leftX * swervedrive.kMaxSpeed
         rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
 
-        deltaHauteur = self.lift.get_lift_height() - self.lift.hauteurDeplacement
-        if deltaHauteur > 0:
-            scale = 1 - deltaHauteur / (
-                self.lift.hauteurLevel4 - self.lift.hauteurDeplacement
-            )
+        if self.lift.get_lift_height() > self.lift.hauteurLevel3:
+            scale = 0.5
             xSpeed *= scale
             ySpeed *= scale
 
