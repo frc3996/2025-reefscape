@@ -241,7 +241,7 @@ class MyRobot(MagicRobot):
         self.pdp.clearStickyFaults()
 
     def addVisionMesurements(self):
-        if self.gyro.yawSpeed() > 360: # TODO keep it?
+        if self.gyro.yawSpeed() > 720:
             print("Dropping vision measurements")
             return
         poseEstimates: list[
