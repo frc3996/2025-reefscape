@@ -5,7 +5,7 @@ from magicbot.state_machine import AutonomousStateMachine
 
 from components.robot_actions import ActionCycleAutonomous
 from components.swervedrive import SwerveDrive
-
+import common.tools
 
 class RunAuto(AutonomousStateMachine):
     DEFAULT: bool = True
@@ -23,4 +23,4 @@ class RunAuto(AutonomousStateMachine):
         Make sure the drive is executed at the end!
         """
         # self.actionCycleAutonomous.engage()
-        self.drivetrain.drive(0.1, 0.1, 0, True)
+        self.drivetrain.drive(0.2, 0, 0, True)
