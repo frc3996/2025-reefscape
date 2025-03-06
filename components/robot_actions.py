@@ -19,7 +19,7 @@ from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.swervedrive import SwerveDrive
-
+from components.rikistick import RikiStick
 
 class ActionStow(StateMachine):
     lift: Lift
@@ -199,6 +199,8 @@ class ActionCycleBase(StateMachine):
     actionIntake: ActionIntake
     actionShoot: ActionShoot
     field_layout: FieldLayout
+    rikiStick: RikiStick
+    is_real: bool
 
     ### MUST OVERRIDE in ActionCycle concrete classes ####
     def get_reef_target(self) -> str:
@@ -211,6 +213,12 @@ class ActionCycleBase(StateMachine):
         raise NotImplementedError()
 
     def pop_coral_target(self) -> None:
+        raise NotImplementedError()
+
+    def get_level_target(self) -> LiftTarget:
+        raise NotImplementedError()
+
+    def pop_level_target(self) -> None:
         raise NotImplementedError()
 
     ######################################################
@@ -235,14 +243,13 @@ class ActionCycleBase(StateMachine):
     @state
     def engage_deposit(self):
         print("ActionCycle: engage_deposit")
-        # TODO: Grab position from rikistick
-        self.actionShoot.start(LiftTarget.L2, "move_lift_auto")
+        self.actionShoot.start(self.get_level_target(), "move_lift_auto")
         self.next_state("wait_deposit")
 
     @state
     def wait_deposit(self):
         self.actionShoot.engage("move_lift_auto")
-        if not self.actionShoot.is_executing:
+        if (not self.is_real) or (not self.actionShoot.is_executing):
             self.next_state("move_coral")
 
     @state
@@ -272,7 +279,7 @@ class ActionCycleBase(StateMachine):
     def wait_intake(self):
         print("ActionCycle: engage_intake")
         self.actionIntake.engage()
-        if not self.actionIntake.is_executing:
+        if (not self.is_real) or (not self.actionIntake.is_executing):
             self.next_state("move_reef")
 
 
@@ -301,15 +308,27 @@ class ActionCycle(ActionCycleBase):
     def pop_coral_target(self) -> None:
         pass
 
+    @override
+    def get_level_target(self) -> LiftTarget:
+        return self.rikiStick.getLiftHeightTarget()
+
+    @override
+    def pop_level_target(self) -> None:
+        pass
 
 class ActionCycleAutonomous(ActionCycleBase):
 
     drivetrain: SwerveDrive
     reefscape: Reefscape
-    autonomousActions: List[str] = []
     AUTONOMOUS_ACTIONS_FILE = "autonomous_actions.txt"
 
     def __init__(self):
+        super().__init__()
+        self.autonomousActions: List[str] = list()
+
+    def on_enable(self) -> None:
+        super().on_enable()
+        print("ActionCycleAutonomous: INIT")
         self.autonomousActions = []
         pathFichier = os.path.join(
             os.path.dirname(__file__), r"..", self.AUTONOMOUS_ACTIONS_FILE
@@ -324,22 +343,25 @@ class ActionCycleAutonomous(ActionCycleBase):
             print(self.AUTONOMOUS_ACTIONS_FILE + " not found.")
         if not self._validate_autonomous_actions():
             print(
-                "Invalid autonomous actions sequence. Autonomous actions will not be executed."
+                "Invalid autonomous actions sequence."
             )
-            self.autonomousActions = []
 
     @state(first=True)
     def start(self):
         if len(self.autonomousActions) == 0:
-            print("ActionCycleAutonomous: CANNOT START -- no actions")
+            print("ActionCycleAutonomous: CANNOT START -- no actions. Defaulting to reef.")
+            self.next_state("move_reef")
         else:
             print("ActionCycleAutonomous: START")
             if self.autonomousActions[0][0] == "r":
                 self.next_state("move_reef")
             elif self.autonomousActions[0][0] == "s":
                 self.next_state("move_coral")
+            elif self.autonomousActions[0][0] == "l":
+                self.next_state("engage_deposit")
             else:
-                print("ActionCycleAutonomous: CANNOT START -- invalid start action")
+                print("ActionCycleAutonomous: CANNOT START -- invalid start action. Defaulting to reef.")
+                self.next_state("move_reef")
 
     def _validate_autonomous_actions(self) -> bool:
         if len(self.autonomousActions) == 0:
@@ -351,7 +373,7 @@ class ActionCycleAutonomous(ActionCycleBase):
                         print("Invalid reef: " + action)
                         return False
                 case "s":
-                    if int(action[1]) not in range(1, 3) or int(action[3]) not in range(1, 5):
+                    if int(action[1]) not in range(1, 3) or int(action[3:]) not in range(1, 5):
                         print("Invalid coral station: " + action)
                         return False
                 case "l":
@@ -366,11 +388,11 @@ class ActionCycleAutonomous(ActionCycleBase):
     @override
     def get_reef_target(self) -> str:
         if len(self.autonomousActions) == 0:
-            print("INVALID REEF TARGET -- EMPTY LIST: " + self.autonomousActions[0])
-            return ""
+            print("INVALID REEF TARGET -- EMPTY LIST")
+            return self.__getAlliancePrefix() + "r12" # lets try! 
         elif self.autonomousActions[0][0] != "r":
             print("INVALID REEF POSITION -- WRONG TYPE: " + self.autonomousActions[0])
-            return ""
+            return self.__getAlliancePrefix() + "r12" # lets try! 
         else:
             return self.__getAlliancePrefix() + self.autonomousActions[0]
 
@@ -382,16 +404,34 @@ class ActionCycleAutonomous(ActionCycleBase):
     @override
     def get_coral_target(self) -> str:
         if len(self.autonomousActions) == 0:
-            print("INVALID CORAL POSITION: EMPTY LIST")
-            return ""
+            print("INVALID CORAL POSITION -- EMPTY LIST")
+            return self.__getAlliancePrefix() + "s2_2" # lets try! 
         elif self.autonomousActions[0][0] != "s":
-            print("INVALID CORAL POSITION: WRONG TYPE")
-            return ""
+            print("INVALID CORAL POSITION -- WRONG TYPE: " + self.autonomousActions[0])
+            return self.__getAlliancePrefix() + "s2_2" # lets try! 
         else:
             return self.__getAlliancePrefix() + self.autonomousActions[0]
 
     @override
     def pop_coral_target(self) -> None:
+        if len(self.autonomousActions) > 0:
+            self.autonomousActions.pop(0)
+
+    @override
+    def get_level_target(self) -> LiftTarget:
+        if len(self.autonomousActions) == 0:
+            print("INVALID LIFT TARGET -- EMPTY LIST")
+            return LiftTarget.L2 # lets try!
+        elif self.autonomousActions[0][0] != "l":
+            print("INVALID LIFT TARGET -- WRONG TYPE: " + self.autonomousActions[0])
+            return LiftTarget.L2
+        else:
+            targetLevel = int(self.autonomousActions[0][1:])
+            targetLevel = max(1, min(targetLevel, 4)) # clamp to [1, 4]
+            return LiftTarget(targetLevel)
+
+    @override
+    def pop_level_target(self) -> None:
         if len(self.autonomousActions) > 0:
             self.autonomousActions.pop(0)
 

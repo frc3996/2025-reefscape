@@ -208,6 +208,7 @@ class TrajectoryFollower(StateMachine):
         if initial_call:
             self.drivetrain.drive_auto(ChassisSpeeds())
             print("DESTINATION REACHED!")
+        self.done()
 
     @override
     def done(self) -> None:

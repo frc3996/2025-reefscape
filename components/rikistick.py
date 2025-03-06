@@ -63,6 +63,7 @@ class RikiStick:
     def getLiftHeightTargetStr(self) -> str:
         return self.getLiftHeightTarget().name
 
+    @feedback
     def getLiftHeightTarget(self) -> LiftTarget:
         return self.liftHeightTarget
 
