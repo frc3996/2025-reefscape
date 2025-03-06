@@ -203,7 +203,9 @@ class ActionCycleBase(StateMachine):
     @state
     def engage_deposit(self):
         print("ActionCycle: engage_deposit")
-        self.actionShoot.start(self.get_level_target(), "move_lift_auto")
+        liftLevel = self.get_level_target()
+        self.pop_level_target()
+        self.actionShoot.start(liftLevel, "move_lift_auto")
         self.next_state("wait_deposit")
 
     @state

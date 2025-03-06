@@ -165,8 +165,12 @@ class TrajectoryFollower(StateMachine):
                         self.startTime = currentTime
                         genEndTime = wpilib.Timer.getFPGATimestamp()
                         print(f"Generated path with {len(interiorPath)} nodes in {(genEndTime - genStartTime) * 1000} ms")
-                    else:
-                        print("********** ERROR: Cannot find path **********")
+                    elif startNode is None:
+                        print("********** ERROR: Cannot find start node **********")
+                        self.next_state("finish")
+                        return
+                    elif endNode is None:
+                        print("********** ERROR: Cannot find end node **********")
                         self.next_state("finish")
                         return
 
