@@ -11,7 +11,6 @@ from wpimath.geometry import Pose2d
 from autonomous.trajectory_follower import TrajectoryFollower
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
-from common.path_helper import PathHelper
 from components.chariot import Chariot
 from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
