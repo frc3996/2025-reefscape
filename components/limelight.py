@@ -11,23 +11,18 @@ from common.limelight_helpers import LimelightHelpers, PoseEstimate
 
 @final
 class LimeLightVision:
-    stddev_xy = tunable(0.2)
-    # stddev_rot = tunable(0.7)
-
     def __init__(self, name: str):
         self.cameraName = name
         self.nt = ntcore.NetworkTableInstance.getDefault()
         self.stddevXY = self.nt.getFloatTopic(
-            f"/AdvantageScope/Limelight_stddev_xy",
+            f"/AdvantageScope/Limelight/stddev_xy",
         ).getEntry(0.7)
         self.stddevXY.set(0.7)
 
-        # self.stddevXYSub = self.nt.getFloatTopic(
-        #     f"/AdvantageScope/Limelight_stddev_xy",
-        # ).subscribe(0.7)
-        # self.stddevROT = nt.getFloatTopic(
-        #     f"/AdvantageScope/LimeLight_stddev_rot",
-        # ).publish()
+        self.stddevRot = self.nt.getFloatTopic(
+            f"/AdvantageScope/Limelight/stddev_rot",
+        ).getEntry(0.7)
+        self.stddevRot.set(0.7)
 
     def light_pipeline(self):
         LimelightHelpers.set_LED_to_pipeline_control(self.cameraName)
@@ -79,5 +74,5 @@ class LimeLightVision:
         return (
             stddev_xy * factor,
             stddev_xy * factor,
-            math.inf if pose.is_megatag_2 else (math.inf * factor),
+            math.inf if pose.is_megatag_2 else (self.stddevRot.get() * factor),
         )
