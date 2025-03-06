@@ -80,15 +80,15 @@ class FieldLayout(AprilTagFieldLayout):
                                                teamPrefix + "_c" + str(iCage))                    
         return graph
 
-    @feedback
-    def redTargets(self) -> list[Pose2d]:
-        """Just to display things"""
-        return self.reefscape.getAllRedPoints()
+    # @feedback
+    # def redTargets(self) -> list[Pose2d]:
+    #     """Just to display things"""
+    #     return self.reefscape.getAllRedPoints()
     
-    @feedback
-    def blueTargets(self) -> list[Pose2d]:
-        """Just to display things"""
-        return self.reefscape.getAllBluePoints()
+    # @feedback
+    # def blueTargets(self) -> list[Pose2d]:
+    #     """Just to display things"""
+    #     return self.reefscape.getAllBluePoints()
 
     def getCoralTarget(self) -> str:
         return self.reefscape.getClosestCoralStationSlide(
