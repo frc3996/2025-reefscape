@@ -15,34 +15,31 @@ SWERVES (FALCONS x4) LIME LIGHT
 import math
 from datetime import datetime
 from time import time
-from typing import Callable, Dict, override
+from typing import override
 
 import ntcore
-import rev
 import wpilib
 import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
-from pathplannerlib.commands import Pose2d
+from pathplannerlib.controller import Rotation2d
 from wpimath.filter import SlewRateLimiter
 
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
-from autonomous.pathplanner import ActionPathPlanner
 from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 from autonomous.trajectory_follower import TrajectoryFollower
-from autonomous.trajectory_follower_v2 import TrajectoryFollowerV2
 from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
-from common import gamepad_helper
+from common import gamepad_helper, tools
 from common.limelight_helpers import LimelightHelpers, PoseEstimate
+from components import field, reefscape
 from components.chariot import Chariot
-# from components.climb import ActionClimb, Climb
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
-from components.limelight_me import LimeLightVision
+from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
 from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
@@ -186,42 +183,92 @@ class MyRobot(MagicRobot):
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
-        self.limelightBack = LimeLightVision("limelight-back")
-        self.limelightFront = LimeLightVision("limelight-front")
+        self.cameras: list[LimeLightVision] = [
+            LimeLightVision("limelight-back"),
+            LimeLightVision("limelight-front"),
+        ]
+
+        self.lockRobotZero: bool = False
+
+    def setRobotZero(self):
+        """To reset the internal IMU's fused robot yaw to the yaw submitted via
+        SetRobotOrientation(), set your Limelight's IMU mode to 1 with
+        LimelightHelpers.SetIMUMode(). While seeding, MegaTag2 will continue to
+        use the yaw value submitted via SetRobotOrientation()."""
+        if self.lockRobotZero:
+            return
+
+        if tools.is_blue():
+            self.drivetrain.resetPose(
+                wpimath.geometry.Pose2d(1, 1, Rotation2d.fromDegrees(180))
+            )
+        elif tools.is_red():
+            self.drivetrain.resetPose(
+                wpimath.geometry.Pose2d(
+                    reefscape.FIELD_LENGTH - 1,
+                    reefscape.FIELD_WIDTH - 1,
+                    Rotation2d.fromDegrees(0),
+                )
+            )
 
     @override
     def robotInit(self):
         return super().robotInit()
 
     @override
-    def robotPeriodic(self) -> None:
-        backMesurement = self.limelightBack.getVisionMesurement(self.drivetrain)
-        _ = self.limelightFront.getVisionMesurement(
-            self.drivetrain, backMesurement, True
-        )
-
-        self.drivetrain.updateOdometry()
-        # self.drivetrain.log()
-
-    @override
     def disabledInit(self) -> None:
-        pass
-
-    @override
-    def disabledPeriodic(self):
-        """Mets à jours le dashboard, même quand le robot est désactivé"""
-        pass
+        # Use mode 1 while your robot is waiting for the autonomous period to begin
+        for camera in self.cameras:
+            LimelightHelpers.set_imu_mode(camera.cameraName, 1)
 
     @override
     def autonomousInit(self):
-        """Cette fonction est appelée une seule fois lorsque le robot entre en mode autonome."""
-        pass
+        self.lockRobotZero = True
+
+        # Use mode 2
+        for camera in self.cameras:
+            LimelightHelpers.set_imu_mode(camera.cameraName, 2)
 
     @override
     def teleopInit(self):
         """Cette fonction est appelée une seule fois lorsque le robot en
         tre en mode téléopéré."""
+        self.lockRobotZero = True
+
+        # Use mode 2
+        for camera in self.cameras:
+            LimelightHelpers.set_imu_mode(camera.cameraName, 2)
+
         self.pdp.clearStickyFaults()
+
+    def addVisionMesurements(self):
+        poseEstimates: list[
+            tuple[wpimath.geometry.Pose2d, float, tuple[float, float, float]]
+        ] = list()
+        for camera in self.cameras:
+            poseEstimate = camera.getVisionMesurement()
+            if poseEstimate:
+                poseEstimates.append(poseEstimate)
+
+        for poseEstimate in poseEstimates:
+            self.drivetrain.addVisionPoseEstimate(*poseEstimate)
+
+    @override
+    def robotPeriodic(self) -> None:
+        # When robot is disable, we seed the IMU
+        if (
+            wpilib.DriverStation.isAutonomousEnabled()
+            or wpilib.DriverStation.isTeleopEnabled()
+        ):
+            self.addVisionMesurements()
+        self.drivetrain.updateOdometry()
+        # self.drivetrain.log()
+
+    @override
+    def disabledPeriodic(self):
+        self.setRobotZero()
+        for camera in self.cameras:
+            camera.setRobotOrientation(self.drivetrain.getPose())
 
     @override
     def teleopPeriodic(self) -> None:
