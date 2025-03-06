@@ -183,8 +183,8 @@ class MyRobot(MagicRobot):
         self.pdp.clearStickyFaults()
 
         self.cameras: list[LimeLightVision] = [
-            LimeLightVision("limelight-back"),
             LimeLightVision("limelight-front"),
+            LimeLightVision("limelight-back"),
         ]
 
         self.lockRobotZero: bool = False
@@ -269,8 +269,12 @@ class MyRobot(MagicRobot):
     @override
     def disabledPeriodic(self):
         self.setRobotZero()
-        for camera in self.cameras:
-            camera.setRobotOrientation(self.drivetrain.getPose())
+        # Front
+        self.cameras[0].setRobotOrientation(self.drivetrain.getPose())
+        # Back
+        self.cameras[1].setRobotOrientation(
+            self.drivetrain.getPose().rotateBy(Rotation2d.fromDegrees(180))
+        )
 
     @override
     def teleopPeriodic(self) -> None:
