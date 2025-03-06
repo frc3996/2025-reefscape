@@ -18,7 +18,8 @@ from wpimath.trajectory import (Trajectory, TrajectoryConfig,
 
 from components import swervedrive
 from components.swervedrive import SwerveDrive
-
+from components.field import FieldLayout
+from common.graph import Graph, AStar, Node
 
 @final
 class TrajectoryFollower(StateMachine):
@@ -35,9 +36,13 @@ class TrajectoryFollower(StateMachine):
     # Inject the control loop wait time
     dt: float
 
+    # Inject the field
+    field_layout: FieldLayout
+
     def setup(self) -> None:
         super().__init__()
-
+        self.destinationNodeName : str = ""
+    
         # Instantiate the HolonomicDriveController.
         # You will need to tune these PID values for your robot.
         x_controller = PIDController(1.0, 0.0, 0.0)
@@ -57,7 +62,7 @@ class TrajectoryFollower(StateMachine):
             x_controller, y_controller, theta_controller
         )
 
-        self.holonomicController.setTolerance(Pose2d(0.01, 0.01, math.radians(5)))
+        self.holonomicController.setTolerance(Pose2d(0.02, 0.02, math.radians(5)))
 
         self.startTime = 0
 
@@ -97,18 +102,24 @@ class TrajectoryFollower(StateMachine):
 
         return trajectory
 
+    def move(self, destinationNodeName : str) -> None:
+        if self.destinationNodeName != destinationNodeName:
+            self.destinationNodeName = destinationNodeName
+            return self.engage("follow_trajectory", True)
+        else:
+            return super().engage()
+
     @state(first=True)
     def follow_trajectory(self, initial_call):
         """
         This state is called repeatedly during autonomous.
         It computes the desired chassis speeds to follow the trajectory.
         """
-        end = Pose2d(2, 2, Rotation2d(math.pi / 2))
-        interior: list[Translation2d] = []  # Add interior waypoints if desired.
+        assert self.destinationNodeName != ""
+        end = self.field_layout.getPose(self.destinationNodeName)
 
         # Get the real robot position
         currentPos: Pose2d = self.drivetrain.getPose()
-        currentTime = wpilib.Timer.getFPGATimestamp()
 
         # Find the heading angle, this is a holonomic drive!
         startTranslation = Translation2d(currentPos.X(), currentPos.Y())
@@ -125,13 +136,39 @@ class TrajectoryFollower(StateMachine):
 
         try:
             if translation_distance > 0.01:  # Threshold for negligible translation.
+                currentTime = wpilib.Timer.getFPGATimestamp()
                 # Calculate the trajectory
                 if (
                     initial_call
                     or self.trajectory.totalTime() < currentTime - self.startTime
                 ):
-                    self.trajectory = self.generate_trajectory(start, interior, end)
-                    self.startTime = currentTime
+                    graph = self.field_layout.getGraph()
+                    startNode = graph.findClosest(startTranslation)
+                    endNode = graph.getNode(self.destinationNodeName)
+                    if startNode is not None and endNode is not None:
+                        print("********** Generating path **********")
+                        genStartTime = wpilib.Timer.getFPGATimestamp()
+                        interiorPathNodes: list[Node] = AStar.generatePath(graph, startNode, endNode)
+                        interiorPathNodes = interiorPathNodes[:-1]  # Remove final interior node because it's the end pose
+                        if startNode.position.distance(interiorPathNodes[0].position) < 0.01: # Remove first node if it's the same as the first interior node
+                            interiorPathNodes = interiorPathNodes[1:]
+                        if interiorPathNodes is None or len(interiorPathNodes) == 0:
+                            print("********** ERROR: Cannot find path **********")
+                            self.next_state("finish")
+                            return
+                        interiorPath : list[Translation2d] = [node.position for node in interiorPathNodes]
+                        print(f"Start: {start}")
+                        print(f"Path: {interiorPath}")
+                        print(f"End: {end}")
+
+                        self.trajectory = self.generate_trajectory(start, interiorPath, end)
+                        self.startTime = currentTime
+                        genEndTime = wpilib.Timer.getFPGATimestamp()
+                        print(f"Generated path with {len(interiorPath)} nodes in {(genEndTime - genStartTime) * 1000} ms")
+                    else:
+                        print("********** ERROR: Cannot find path **********")
+                        self.next_state("finish")
+                        return
 
                 # Sample the desired state from your trajectory.
                 desiredState: Trajectory.State = self.trajectory.sample(
@@ -170,7 +207,7 @@ class TrajectoryFollower(StateMachine):
     def finish(self, initial_call: bool):
         if initial_call:
             self.drivetrain.drive_auto(ChassisSpeeds())
-            print("DESTINATION!")
+            print("DESTINATION REACHED!")
 
     @override
     def done(self) -> None:

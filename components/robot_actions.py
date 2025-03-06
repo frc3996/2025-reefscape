@@ -8,7 +8,7 @@ from magicbot.state_machine import StateRef
 from wpimath import controller
 from wpimath.geometry import Pose2d
 
-from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
+from autonomous.trajectory_follower import TrajectoryFollower
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
@@ -195,22 +195,22 @@ class ActionPathTester(StateMachine):
 
 class ActionCycleBase(StateMachine):
     intake: Intake
-    actionPathPlannerV3: ActionPathPlannerV3
+    actionTrajectoryFollower: TrajectoryFollower
     actionIntake: ActionIntake
     actionShoot: ActionShoot
     field_layout: FieldLayout
 
     ### MUST OVERRIDE in ActionCycle concrete classes ####
-    def get_reef_position(self) -> Pose2d | None:
+    def get_reef_target(self) -> str:
         raise NotImplementedError()
 
-    def pop_reef_position(self) -> None:
+    def pop_reef_target(self) -> None:
         raise NotImplementedError()
 
-    def get_coral_position(self) -> Pose2d | None:
+    def get_coral_target(self) -> str:
         raise NotImplementedError()
 
-    def pop_coral_position(self) -> None:
+    def pop_coral_target(self) -> None:
         raise NotImplementedError()
 
     ######################################################
@@ -218,18 +218,18 @@ class ActionCycleBase(StateMachine):
     @state
     def move_reef(self):
         print("ActionCycle: MOVE_REEF")
-        reefPosition = self.get_reef_position()
-        if reefPosition is not None:
-            self.actionPathPlannerV3.move(reefPosition)
+        reefPosition = self.get_reef_target()
+        if reefPosition != "":
+            self.actionTrajectoryFollower.move(reefPosition)
             self.next_state("wait_move_reef")
 
     @state
     def wait_move_reef(self):
-        reefPosition = self.get_reef_position()
-        if reefPosition is not None:
-            self.actionPathPlannerV3.move(reefPosition)
-            if not self.actionPathPlannerV3.is_executing:
-                self.pop_reef_position()
+        reefPosition = self.get_reef_target()
+        if reefPosition != "":
+            self.actionTrajectoryFollower.move(reefPosition)
+            if not self.actionTrajectoryFollower.is_executing:
+                self.pop_reef_target()
                 self.next_state("engage_deposit")
 
     @state
@@ -248,18 +248,18 @@ class ActionCycleBase(StateMachine):
     @state
     def move_coral(self):
         print("ActionCycle: move_coral")
-        coralPosition = self.get_coral_position()
-        if coralPosition is not None:
-            self.actionPathPlannerV3.move(coralPosition)
+        coralPosition = self.get_coral_target()
+        if coralPosition != "":
+            self.actionTrajectoryFollower.move(coralPosition)
             self.next_state("wait_move_coral")
 
     @state
     def wait_move_coral(self):
-        coralPosition = self.get_coral_position()
-        if coralPosition is not None:
-            self.actionPathPlannerV3.move(coralPosition)
-            if not self.actionPathPlannerV3.is_executing:
-                self.pop_coral_position()
+        coralPosition = self.get_coral_target()
+        if coralPosition != "":
+            self.actionTrajectoryFollower.move(coralPosition)
+            if not self.actionTrajectoryFollower.is_executing:
+                self.pop_coral_target()
                 self.next_state("engage_intake")
 
     @state
@@ -286,19 +286,19 @@ class ActionCycle(ActionCycleBase):
             self.next_state("move_coral")
 
     @override
-    def get_reef_position(self) -> Pose2d | None:
-        return self.field_layout.getReefPosition()
+    def get_reef_target(self) -> str:
+        return self.field_layout.getReefTarget()
 
     @override
-    def pop_reef_position(self) -> None:
+    def pop_reef_target(self) -> None:
         pass
 
     @override
-    def get_coral_position(self) -> Pose2d | None:
-        return self.field_layout.getCoralPosition()
+    def get_coral_target(self) -> str:
+        return self.field_layout.getCoralTarget()
 
     @override
-    def pop_coral_position(self) -> None:
+    def pop_coral_target(self) -> None:
         pass
 
 
@@ -351,7 +351,7 @@ class ActionCycleAutonomous(ActionCycleBase):
                         print("Invalid reef: " + action)
                         return False
                 case "s":
-                    if int(action[1:]) not in range(1, 3):
+                    if int(action[1]) not in range(1, 3) or int(action[3]) not in range(1, 5):
                         print("Invalid coral station: " + action)
                         return False
                 case "l":
@@ -364,39 +364,39 @@ class ActionCycleAutonomous(ActionCycleBase):
         return True
 
     @override
-    def get_reef_position(self) -> Pose2d | None:
+    def get_reef_target(self) -> str:
         if len(self.autonomousActions) == 0:
-            return None
+            print("INVALID REEF TARGET -- EMPTY LIST: " + self.autonomousActions[0])
+            return ""
         elif self.autonomousActions[0][0] != "r":
-            return None
+            print("INVALID REEF POSITION -- WRONG TYPE: " + self.autonomousActions[0])
+            return ""
         else:
-            reef = int(self.autonomousActions[0][1:])
-            pose = self.reefscape.getReef(reef)
-            # print("Reef " + str(reef) + " @ x: " + str(pose.translation().x) + " y: " + str(pose.translation().y))
-            return pose
+            return self.__getAlliancePrefix() + self.autonomousActions[0]
 
     @override
-    def pop_reef_position(self) -> None:
+    def pop_reef_target(self) -> None:
         if len(self.autonomousActions) > 0:
             self.autonomousActions.pop(0)
 
     @override
-    def get_coral_position(self) -> Pose2d | None:
+    def get_coral_target(self) -> str:
         if len(self.autonomousActions) == 0:
             print("INVALID CORAL POSITION: EMPTY LIST")
-            return None
+            return ""
         elif self.autonomousActions[0][0] != "s":
             print("INVALID CORAL POSITION: WRONG TYPE")
-            return None
+            return ""
         else:
-            station = int(self.autonomousActions[0][1:])
-            pose = self.reefscape.getClosestCoralStationSlide(
-                station, self.drivetrain.getPose()
-            )
-            # print("Station " + str(station) + " @ x: " + str(pose.translation().x) + " y: " + str(pose.translation().y))
-            return pose
+            return self.__getAlliancePrefix() + self.autonomousActions[0]
 
     @override
-    def pop_coral_position(self) -> None:
+    def pop_coral_target(self) -> None:
         if len(self.autonomousActions) > 0:
             self.autonomousActions.pop(0)
+
+    def __getAlliancePrefix(self) -> str:
+        if tools.is_red():
+            return "r_"
+        else:
+            return "b_"

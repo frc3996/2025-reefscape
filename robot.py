@@ -54,9 +54,6 @@ kRobotToCam = wpimath.geometry.Transform3d(
     wpimath.geometry.Rotation3d.fromDegrees(0.0, -30.0, 0.0),
 )
 
-RIKITIK_ENABLE_TEST_MODE: bool = False
-
-
 class MyRobot(MagicRobot):
     """
     Après avoir créer les 'components' de bas niveau, tel que 'drivetrain' ou 'intake', utiliser leur nom suivi d'un trait souligné (_)
@@ -84,7 +81,6 @@ class MyRobot(MagicRobot):
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
-    actionPathPlannerV3: ActionPathPlannerV3
 
     ## SysId
     actionAngularMaxVelocity: AngularMaxVelocity
@@ -233,9 +229,7 @@ class MyRobot(MagicRobot):
         self.teleopDrive()
 
         # Sub-modes
-        if RIKITIK_ENABLE_TEST_MODE:
-            self.teleopScratchpadTestMode()
-        elif self.rikiStick.isEditMode():
+        if self.rikiStick.isEditMode():
             self.teleopTerrainEditMode()
         else:
             self.teleopManualOperations()
@@ -287,21 +281,21 @@ class MyRobot(MagicRobot):
 
         # Shoot
         if self.gamepad_pilote.getAButton():
-            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getBButton():
-            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
-            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
-            self.snapAngle.engage(self.field_layout.getReefPosition())
+            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L4)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
-            stationPose = self.field_layout.getCoralPosition()
+            stationPose = self.field_layout.getCoralTargetPosition()
             self.snapAngle.engage(
                 stationPose.rotateBy(wpimath.geometry.Rotation2d.fromDegrees(180))
             )
@@ -323,14 +317,12 @@ class MyRobot(MagicRobot):
             # self.actionClimb.done()
 
     def teleopAutonomousCycle(self):
-        if self.rikiStick is not None and self.rikiStick.getKillSwitch():
+        if self.rikiStick is None:
+            self.isAutoCycling = False
+        elif self.rikiStick.getKillSwitch():
             self.isAutoCycling = False
         elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
-            print("Autocycle")
-            # self.isAutoCycling = not self.isAutoCycling  # toggle
-            self.isAutoCycling = True
-        else:
-            self.isAutoCycling = False
+            self.isAutoCycling = not self.isAutoCycling  # toggle
 
         if self.isAutoCycling:
             self.actionCycle.engage()
@@ -359,19 +351,3 @@ class MyRobot(MagicRobot):
             ySpeed *= scale
 
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
-
-    # Scratchpad test mode, enable it by setting RIKITIK_ENABLE_TEST_MODE to True at the top of the file
-    def teleopScratchpadTestMode(self):
-        if self.gamepad_pilote.getBButton():
-            self.actionShoot.start(LiftTarget.L1)
-        elif self.gamepad_pilote.getAButton():
-            self.snapAngle.engage(self.field_layout.getReefPosition())
-            self.actionShoot.start(LiftTarget.L2)
-        elif self.gamepad_pilote.getXButton():
-            self.actionShoot.start(LiftTarget.L3)
-        elif self.gamepad_pilote.getYButton():
-            self.actionShoot.start(LiftTarget.L4)
-        elif self.gamepad_pilote.getLeftBumper():
-            self.actionIntake.engage()
-        elif self.gamepad_pilote.getRightBumper():
-            self.actionIntakeSortie.engage()
