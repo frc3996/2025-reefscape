@@ -45,11 +45,6 @@ from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
                                       ActionIntake, ActionShoot, ActionStow)
 from components.swervemodule import SwerveModule
 
-kRobotToCam = wpimath.geometry.Transform3d(
-    wpimath.geometry.Translation3d(0.5, 0.0, 0.5),
-    wpimath.geometry.Rotation3d.fromDegrees(0.0, -30.0, 0.0),
-)
-
 class MyRobot(MagicRobot):
     """
     Après avoir créer les 'components' de bas niveau, tel que 'drivetrain' ou 'intake', utiliser leur nom suivi d'un trait souligné (_)
@@ -359,9 +354,8 @@ class MyRobot(MagicRobot):
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
             stationPose = self.field_layout.getCoralTargetPosition()
-            self.snapAngle.engage(
-                stationPose.rotateBy(wpimath.geometry.Rotation2d.fromDegrees(180))
-            )
+            if self.isAutoSnapAngle:
+                self.snapAngle.engage(stationPose)
             self.actionIntake.engage()
 
         # Deposit coral

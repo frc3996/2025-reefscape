@@ -16,13 +16,13 @@ class LimeLightVision:
         self.nt = ntcore.NetworkTableInstance.getDefault()
         self.stddevXY = self.nt.getFloatTopic(
             f"/AdvantageScope/Limelight/stddev_xy",
-        ).getEntry(0.7)
-        self.stddevXY.set(0.7)
+        ).getEntry(0.01)
+        self.stddevXY.set(0.01)
 
         self.stddevRot = self.nt.getFloatTopic(
             f"/AdvantageScope/Limelight/stddev_rot",
-        ).getEntry(0.7)
-        self.stddevRot.set(0.7)
+        ).getEntry(0.01)
+        self.stddevRot.set(0.01)
 
     def light_pipeline(self):
         LimelightHelpers.set_LED_to_pipeline_control(self.cameraName)
