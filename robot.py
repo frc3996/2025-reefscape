@@ -30,9 +30,8 @@ import constants
 from autonomous.auto_modes import RunAuto
 from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 from autonomous.trajectory_follower import TrajectoryFollower
-from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper, tools
-from common.limelight_helpers import LimelightHelpers, PoseEstimate
+from common.limelight_helpers import LimelightHelpers
 from components import field, reefscape
 from components.chariot import Chariot
 from components.field import FieldLayout
@@ -121,7 +120,7 @@ class MyRobot(MagicRobot):
     nt: ntcore.NetworkTable
 
     # Autonomous cycling toggle
-    isAutoCycling: bool = True
+    isAutoCycling: bool = False
 
     def __init__(self) -> None:
         super().__init__()
@@ -242,6 +241,9 @@ class MyRobot(MagicRobot):
         self.pdp.clearStickyFaults()
 
     def addVisionMesurements(self):
+        if self.gyro.yawSpeed() > 360: # TODO keep it?
+            print("Dropping vision measurements")
+            return
         poseEstimates: list[
             tuple[wpimath.geometry.Pose2d, float, tuple[float, float, float]]
         ] = list()
