@@ -153,45 +153,6 @@ class ActionShoot(StateMachine):
         self.actionStow.engage()
         return super().done()
 
-
-class ActionPathTester(StateMachine):
-    drivetrain: SwerveDrive
-    path_kp: tunable[int] = tunable(2)
-    path_ki: tunable[int] = tunable(0)
-    path_kd: tunable[int] = tunable(0)
-    path_profile: tunable[int] = tunable(2)
-    force_reset_pose: tunable[bool] = tunable(False)
-
-    @override
-    def engage(
-        self, initial_state: StateRef | None = None, force: bool = False
-    ) -> None:
-        return super().engage(initial_state, force)
-
-    @state(first=True)
-    def init(self):
-        self.auto_path: PathHelper = PathHelper(
-            self.drivetrain,
-            "amp_to_1",
-            kp=self.path_kp,
-            ki=self.path_ki,
-            kd=self.path_kd,
-            profile_kp=self.path_profile,
-        )
-        self.auto_path.init_path(force_robot_starting_position=self.force_reset_pose)
-        self.next_state("move")
-
-    @state
-    def move(self):
-        self.auto_path.move_to_end()
-        if self.auto_path.robot_reached_end_position():
-            print("Reached end!")
-
-    @override
-    def done(self):
-        super().done()
-
-
 class ActionCycleBase(StateMachine):
     intake: Intake
     actionTrajectoryFollower: TrajectoryFollower
