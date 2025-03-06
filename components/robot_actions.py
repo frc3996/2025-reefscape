@@ -1,22 +1,17 @@
 import os
-from dataclasses import field
-from typing import Callable, List, override
+from typing import Callable, override
 
-import wpilib
-from magicbot import StateMachine, state, timed_state, tunable
+from magicbot import StateMachine, state, tunable
 from magicbot.state_machine import StateRef
-from wpimath import controller
 from wpimath.geometry import Pose2d
 
-from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
-from common import tools
+from autonomous.trajectory_follower import TrajectoryFollower
 # from common.arduino_light import I2CArduinoLight, LedMode
 from common.path_helper import PathHelper
 from components.chariot import Chariot
 from components.field import FieldLayout
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
 from components.lift import Lift, LiftTarget
-from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.swervedrive import SwerveDrive
 
@@ -195,7 +190,7 @@ class ActionPathTester(StateMachine):
 
 class ActionCycleBase(StateMachine):
     intake: Intake
-    actionPathPlannerV3: ActionPathPlannerV3
+    trajectoryFollower: TrajectoryFollower
     actionIntake: ActionIntake
     actionShoot: ActionShoot
     field_layout: FieldLayout
@@ -220,15 +215,15 @@ class ActionCycleBase(StateMachine):
         print("ActionCycle: MOVE_REEF")
         reefPosition = self.get_reef_position()
         if reefPosition is not None:
-            self.actionPathPlannerV3.move(reefPosition)
+            self.trajectoryFollower.move(reefPosition)
             self.next_state("wait_move_reef")
 
     @state
     def wait_move_reef(self):
         reefPosition = self.get_reef_position()
         if reefPosition is not None:
-            self.actionPathPlannerV3.move(reefPosition)
-            if not self.actionPathPlannerV3.is_executing:
+            self.trajectoryFollower.move(reefPosition)
+            if not self.trajectoryFollower.is_executing:
                 self.pop_reef_position()
                 self.next_state("engage_deposit")
 
@@ -250,15 +245,15 @@ class ActionCycleBase(StateMachine):
         print("ActionCycle: move_coral")
         coralPosition = self.get_coral_position()
         if coralPosition is not None:
-            self.actionPathPlannerV3.move(coralPosition)
+            self.trajectoryFollower.move(coralPosition)
             self.next_state("wait_move_coral")
 
     @state
     def wait_move_coral(self):
         coralPosition = self.get_coral_position()
         if coralPosition is not None:
-            self.actionPathPlannerV3.move(coralPosition)
-            if not self.actionPathPlannerV3.is_executing:
+            self.trajectoryFollower.move(coralPosition)
+            if not self.trajectoryFollower.is_executing:
                 self.pop_coral_position()
                 self.next_state("engage_intake")
 
@@ -306,7 +301,7 @@ class ActionCycleAutonomous(ActionCycleBase):
 
     drivetrain: SwerveDrive
     reefscape: Reefscape
-    autonomousActions: List[str] = []
+    autonomousActions: list[str] = []
     AUTONOMOUS_ACTIONS_FILE = "autonomous_actions.txt"
 
     def __init__(self):

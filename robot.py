@@ -12,9 +12,7 @@ SWERVES (FALCONS x4) LIME LIGHT
 
 """
 
-import math
 from datetime import datetime
-from time import time
 from typing import override
 
 import ntcore
@@ -22,18 +20,15 @@ import wpilib
 import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
-from pathplannerlib.controller import Rotation2d
 from wpimath.filter import SlewRateLimiter
 
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
-from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 from autonomous.trajectory_follower import TrajectoryFollower
-from autonomous.trajectory_follower_v3 import ActionPathPlannerV3
 from common import gamepad_helper, tools
-from common.limelight_helpers import LimelightHelpers, PoseEstimate
-from components import field, reefscape
+from common.limelight_helpers import LimelightHelpers
+from components import reefscape
 from components.chariot import Chariot
 from components.field import FieldLayout
 from components.gyro import Gyro
@@ -80,13 +75,7 @@ class MyRobot(MagicRobot):
     # actionClimb: ActionClimb
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
-    actionTrajectoryFollower: TrajectoryFollower
-    actionPathPlannerV3: ActionPathPlannerV3
-
-    ## SysId
-    actionAngularMaxVelocity: AngularMaxVelocity
-    actionMaxVelocity: MaxVelocity
-    actionMaxAccel: MaxAccel
+    trajectoryFollower: TrajectoryFollower
 
     ## Manual Mode
     actionShoot: ActionShoot
@@ -95,7 +84,7 @@ class MyRobot(MagicRobot):
 
     ##### LOW Level components #####
 
-    # NAVX
+    # Gyro
     gyro: Gyro
 
     # SwerveDrive
@@ -103,8 +92,8 @@ class MyRobot(MagicRobot):
     snapAngle: swervedrive.SnapAngle
 
     # FieldLayout
-    field_layout: FieldLayout
-    reefscape: Reefscape
+    # field_layout: FieldLayout
+    # reefscape: Reefscape
 
     # Rikistick
     rikiStick: RikiStick
@@ -193,6 +182,9 @@ class MyRobot(MagicRobot):
         ]
 
         self.lockRobotZero: bool = False
+
+        self.field_layout: FieldLayout = FieldLayout()
+        self.reefscape: Reefscape = Reefscape()
 
     def setRobotZero(self):
         """To reset the internal IMU's fused robot yaw to the yaw submitted via

@@ -10,19 +10,15 @@ class Gyro:
     navx: AHRS
     is_real: bool
 
-    @feedback
-    def get_angle(self) -> Rotation2d:
-        return self.navx.getRotation2d()
-
     def reset(self):
         self.navx.reset()
 
     def ok(self) -> bool:
         return self.navx is not None and self.navx.isConnected()
-    
+
     def yawSpeed(self) -> float:
         if self.ok():
-            return self.navx.getRawGyroZ() # Unprocessed?
+            return self.navx.getRawGyroZ()  # Unprocessed?
         else:
             return 0
 

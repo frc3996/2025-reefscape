@@ -61,6 +61,8 @@ class TrajectoryFollower(StateMachine):
 
         self.startTime = 0
 
+        self.end: Pose2d = Pose2d(0, 0, 0)
+
         # LOG
         # Publish the trajectory for visualization.
         nt = ntcore.NetworkTableInstance.getDefault()
@@ -97,13 +99,22 @@ class TrajectoryFollower(StateMachine):
 
         return trajectory
 
+    def move(self, end: Pose2d) -> None:
+        """
+        Is this really the best way??
+        """
+        if end != self.end:
+            self.end = end
+            return self.engage("follow_trajectory", True)
+        else:
+            return super().engage()
+
     @state(first=True)
     def follow_trajectory(self, initial_call):
         """
         This state is called repeatedly during autonomous.
         It computes the desired chassis speeds to follow the trajectory.
         """
-        end = Pose2d(2, 2, Rotation2d(math.pi / 2))
         interior: list[Translation2d] = []  # Add interior waypoints if desired.
 
         # Get the real robot position
@@ -112,7 +123,7 @@ class TrajectoryFollower(StateMachine):
 
         # Find the heading angle, this is a holonomic drive!
         startTranslation = Translation2d(currentPos.X(), currentPos.Y())
-        endTranslation = Translation2d(end.X(), end.Y())
+        endTranslation = Translation2d(self.end.X(), self.end.Y())
         translation = endTranslation - startTranslation
 
         # Start pose for path generation
@@ -120,9 +131,10 @@ class TrajectoryFollower(StateMachine):
 
         # Check if the motion is effectively pure rotation.
         translation_distance = math.hypot(
-            end.X() - currentPos.X(), end.Y() - currentPos.Y()
+            self.end.X() - currentPos.X(), self.end.Y() - currentPos.Y()
         )
 
+        chassisSpeeds: ChassisSpeeds
         try:
             if translation_distance > 0.01:  # Threshold for negligible translation.
                 # Calculate the trajectory
@@ -145,20 +157,20 @@ class TrajectoryFollower(StateMachine):
                 if stray_distance > 1:
                     self.next_state("follow_trajectory")
 
-                chassisSpeeds: ChassisSpeeds = self.holonomicController.calculate(
-                    currentPos, desiredState, end.rotation()
+                chassisSpeeds = self.holonomicController.calculate(
+                    currentPos, desiredState, self.end.rotation()
                 )
             else:
                 # Pure rotation
-                chassisSpeeds: ChassisSpeeds = self.holonomicController.calculate(
-                    currentPos, end, 0, end.rotation()
+                chassisSpeeds = self.holonomicController.calculate(
+                    currentPos, self.end, 0, self.end.rotation()
                 )
                 if self.holonomicController.atReference():
                     self.next_state("finish")
         except Exception:
             # Likely pure rotation?
-            chassisSpeeds: ChassisSpeeds = self.holonomicController.calculate(
-                currentPos, end, 0, end.rotation()
+            chassisSpeeds = self.holonomicController.calculate(
+                currentPos, self.end, 0, self.end.rotation()
             )
             if self.holonomicController.atReference():
                 self.next_state("finish")

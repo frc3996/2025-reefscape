@@ -48,6 +48,3 @@ class FieldLayout(AprilTagFieldLayout):
 
     def getReefPosition(self) -> Pose2d:
         return self.reefscape.getReef(self.rikiStick.getReefTarget())
-
-    def execute(self):
-        pass
