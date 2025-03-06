@@ -19,6 +19,7 @@ from wpimath.trajectory import (Trajectory, TrajectoryConfig,
 from components import swervedrive
 from components.swervedrive import SwerveDrive
 from components.field import FieldLayout
+from components.swervedrive import kMaxSpeed, kMaxAccel, kMaxAngularSpeed 
 from common.graph import Graph, AStar, Node
 
 @final
@@ -43,14 +44,33 @@ class TrajectoryFollower(StateMachine):
         super().__init__()
         self.destinationNodeName : str = ""
     
+        pid_p : float = 1
+        pid_i : float = 0
+        pid_d : float = 0
+
         # Instantiate the HolonomicDriveController.
         # You will need to tune these PID values for your robot.
-        x_controller = PIDController(1.0, 0.0, 0.0)
-        y_controller = PIDController(1.0, 0.0, 0.0)
+        x_controller = PIDController(pid_d, pid_i, pid_d)
+        y_controller = PIDController(pid_d, pid_i, pid_d)
+        # x_controller = ProfiledPIDController(
+        #         pid_p,
+        #         pid_i,
+        #         pid_d,
+        #         trajectory.TrapezoidProfile.Constraints(
+        #             kMaxSpeed, kMaxAccel
+        #         ))
+        # y_controller = ProfiledPIDController(
+        #         pid_p,
+        #         pid_i,
+        #         pid_d,
+        #         trajectory.TrapezoidProfile.Constraints(
+        #             kMaxSpeed, kMaxAccel
+        #         ))
+
         # For the rotational (theta) control, we use a ProfiledPIDController.
         # The constraints here (max velocity and acceleration) should be set according to your robot's capabilities.
         theta_constraints = TrapezoidProfileRadians.Constraints(
-            maxVelocity=math.radians(180), maxAcceleration=math.radians(180)
+            maxVelocity=kMaxAngularSpeed, maxAcceleration=kMaxAngularSpeed
         )
         theta_controller = ProfiledPIDControllerRadians(
             1.0, 0.0, 0.0, theta_constraints

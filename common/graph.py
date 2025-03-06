@@ -84,7 +84,7 @@ class Graph:
 class AStar:
     @staticmethod
     def heuristic(a: Node, b: Node) -> float:
-        return a.position.distance(b.position) # TODO distance carrée?
+        return a.position.distance(b.position)
 
     @staticmethod
     def generatePath(graph : Graph, start: Node, goal: Node) -> list[Node]:
@@ -126,5 +126,9 @@ class AStar:
 
         path.append(start) # optional
         path.reverse() # optional
+        # with open("path.txt", "a") as file:
+        #     for node in path:
+        #         file.write(f"{node.name} {node.position.x} {node.position.y} -> ")
+        #     file.write("\n")
+        # print(path)
         return path
-    

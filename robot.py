@@ -120,7 +120,10 @@ class MyRobot(MagicRobot):
     nt: ntcore.NetworkTable
 
     # Autonomous cycling toggle
-    isAutoCycling: bool = False
+    isAutoCycling: bool = True
+
+    # Autonomous snap angle
+    isAutoSnapAngle: bool = True
 
     def __init__(self) -> None:
         super().__init__()
@@ -286,7 +289,7 @@ class MyRobot(MagicRobot):
             self.teleopTerrainEditMode()
         else:
             self.teleopManualOperations()
-            # self.teleopAutonomousCycle()
+            self.teleopAutonomousCycle()
 
     def teleopTerrainEditMode(self):
         assert self.rikiStick.isEditMode()
@@ -332,18 +335,25 @@ class MyRobot(MagicRobot):
         if (self.gamepad_pilote is None) or (self.gamepad_pilote.getButtonCount() <= 0):
             return
 
+        if abs(self.gamepad_pilote.getPOV() - 180) < 5:
+            self.isAutoSnapAngle = not self.isAutoSnapAngle  # toggle
+
         # Shoot
         if self.gamepad_pilote.getAButton():
-            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
+            if self.isAutoSnapAngle:
+                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getBButton():
-            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
+            if self.isAutoSnapAngle:
+                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
-            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
+            if self.isAutoSnapAngle:
+                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
-            self.snapAngle.engage(self.field_layout.getReefTargetPosition())
+            if self.isAutoSnapAngle:
+                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L4)
 
         # Intake coral
@@ -374,8 +384,6 @@ class MyRobot(MagicRobot):
             self.isAutoCycling = False
         elif self.rikiStick.getKillSwitch():
             self.isAutoCycling = False
-        elif abs(self.gamepad_pilote.getPOV() - 180) < 5:
-            self.isAutoCycling = not self.isAutoCycling  # toggle
 
         if self.isAutoCycling:
             self.actionCycle.engage()

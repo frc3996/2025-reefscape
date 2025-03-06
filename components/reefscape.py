@@ -152,7 +152,6 @@ class Reefscape:
         alliance = DriverStation.getAlliance()
         match alliance:
             case None: # Pour robotpy test en mode autonome
-                assert False
                 return "b"
             case DriverStation.Alliance.kRed:
                 return "r"
