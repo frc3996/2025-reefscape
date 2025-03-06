@@ -1,6 +1,7 @@
 import math
 from typing import final
 
+import ntcore
 from magicbot import feedback, tunable
 from phoenix6 import utils
 from wpimath.geometry import Pose2d, Rotation2d
@@ -10,11 +11,18 @@ from common.limelight_helpers import LimelightHelpers, PoseEstimate
 
 @final
 class LimeLightVision:
-    stddev_xy = tunable(0.2)
-    stddev_rot = tunable(0.7)
-
     def __init__(self, name: str):
         self.cameraName = name
+        self.nt = ntcore.NetworkTableInstance.getDefault()
+        self.stddevXY = self.nt.getFloatTopic(
+            f"/AdvantageScope/Limelight/stddev_xy",
+        ).getEntry(0.7)
+        self.stddevXY.set(0.7)
+
+        self.stddevRot = self.nt.getFloatTopic(
+            f"/AdvantageScope/Limelight/stddev_rot",
+        ).getEntry(0.7)
+        self.stddevRot.set(0.7)
 
     def light_pipeline(self):
         LimelightHelpers.set_LED_to_pipeline_control(self.cameraName)
@@ -49,9 +57,7 @@ class LimeLightVision:
         else:
             return (
                 poseEstimate.pose,
-                utils.fpga_to_current_time(
-                    poseEstimate.timestamp_seconds
-                ),  # TODO nécessaire??
+                utils.fpga_to_current_time(poseEstimate.timestamp_seconds),
                 self._get_dynamic_std_devs(poseEstimate),
             )
 
@@ -63,14 +69,10 @@ class LimeLightVision:
         avg_dist = sum(f.dist_to_camera for f in pose.raw_fiducials) / pose.tag_count
         factor = 1 + (avg_dist**2 / 30)
 
+        stddev_xy = self.stddevXY.get()
+
         return (
-            self.stddev_xy * factor,
-            self.stddev_xy * factor,
-            math.inf if pose.is_megatag_2 else (self.stddev_rot * factor),
+            stddev_xy * factor,
+            stddev_xy * factor,
+            math.inf if pose.is_megatag_2 else (self.stddevRot.get() * factor),
         )
-
-    def on_enable(self):
-        pass
-
-    def execute(self):
-        pass
