@@ -180,33 +180,33 @@ class MyRobot(MagicRobot):
         self.pdp = wpilib.PowerDistribution(1, wpilib.PowerDistribution.ModuleType.kRev)
         self.pdp.clearStickyFaults()
 
-        self.cameras: list[LimeLightVision] = [
-            LimeLightVision("limelight-front"),
-            LimeLightVision("limelight-back"),
-        ]
+        # self.cameras: list[LimeLightVision] = [
+        #     LimeLightVision("limelight-front"),
+        #     LimeLightVision("limelight-back"),
+        # ]
 
-        self.lockRobotZero: bool = False
+        # self.lockRobotZero: bool = False
 
     def setRobotZero(self):
-        """To reset the internal IMU's fused robot yaw to the yaw submitted via
-        SetRobotOrientation(), set your Limelight's IMU mode to 1 with
-        LimelightHelpers.SetIMUMode(). While seeding, MegaTag2 will continue to
-        use the yaw value submitted via SetRobotOrientation()."""
-        if self.lockRobotZero:
-            return
-
-        if tools.is_blue():
-            self.drivetrain.resetPose(
-                wpimath.geometry.Pose2d(1, 1, Rotation2d.fromDegrees(180))
-            )
-        elif tools.is_red():
-            self.drivetrain.resetPose(
-                wpimath.geometry.Pose2d(
-                    reefscape.FIELD_LENGTH - 1,
-                    reefscape.FIELD_WIDTH - 1,
-                    Rotation2d.fromDegrees(0),
-                )
-            )
+        return
+        # """To reset the internal IMU's fused robot yaw to the yaw submitted via
+        # SetRobotOrientation(), set your Limelight's IMU mode to 1 with
+        # LimelightHelpers.SetIMUMode(). While seeding, MegaTag2 will continue to
+        # use the yaw value submitted via SetRobotOrientation()."""
+        # if self.lockRobotZero:
+        #     return
+        # if tools.is_blue():
+        #     self.drivetrain.resetPose(
+        #         wpimath.geometry.Pose2d(1, 1, Rotation2d.fromDegrees(180))
+        #     )
+        # elif tools.is_red():
+        #     self.drivetrain.resetPose(
+        #         wpimath.geometry.Pose2d(
+        #             reefscape.FIELD_LENGTH - 1,
+        #             reefscape.FIELD_WIDTH - 1,
+        #             Rotation2d.fromDegrees(0),
+        #         )
+        #     )
 
     @override
     def robotInit(self):
@@ -214,65 +214,66 @@ class MyRobot(MagicRobot):
 
     @override
     def disabledInit(self) -> None:
-        # Use mode 1 while your robot is waiting for the autonomous period to begin
-        for camera in self.cameras:
-            LimelightHelpers.set_imu_mode(camera.cameraName, 1)
+        # # Use mode 1 while your robot is waiting for the autonomous period to begin
+        # for camera in self.cameras:
+        #     LimelightHelpers.set_imu_mode(camera.cameraName, 1)
+        pass
 
     @override
     def autonomousInit(self):
-        self.lockRobotZero = True
-
-        # Use mode 2
-        for camera in self.cameras:
-            LimelightHelpers.set_imu_mode(camera.cameraName, 2)
+        pass
+        # self.lockRobotZero = True
+        # # Use mode 2
+        # for camera in self.cameras:
+        #     LimelightHelpers.set_imu_mode(camera.cameraName, 2)
 
     @override
     def teleopInit(self):
-        """Cette fonction est appelée une seule fois lorsque le robot en
-        tre en mode téléopéré."""
-        self.lockRobotZero = True
-
-        # Use mode 2
-        for camera in self.cameras:
-            LimelightHelpers.set_imu_mode(camera.cameraName, 2)
+        # """Cette fonction est appelée une seule fois lorsque le robot en
+        # tre en mode téléopéré."""
+        # self.lockRobotZero = True
+        # # Use mode 2
+        # for camera in self.cameras:
+        #     LimelightHelpers.set_imu_mode(camera.cameraName, 2)
 
         self.pdp.clearStickyFaults()
 
     def addVisionMesurements(self):
-        if self.gyro.yawSpeed() > 720:
-            print("Dropping vision measurements")
-            return
-        poseEstimates: list[
-            tuple[wpimath.geometry.Pose2d, float, tuple[float, float, float]]
-        ] = list()
-        for camera in self.cameras:
-            poseEstimate = camera.getVisionMesurement()
-            if poseEstimate:
-                poseEstimates.append(poseEstimate)
-
-        for poseEstimate in poseEstimates:
-            self.drivetrain.addVisionPoseEstimate(*poseEstimate)
+        pass
+        # if self.gyro.yawSpeed() > 720:
+        #     print("Dropping vision measurements")
+        #     return
+        # poseEstimates: list[
+        #     tuple[wpimath.geometry.Pose2d, float, tuple[float, float, float]]
+        # ] = list()
+        # for camera in self.cameras:
+        #     poseEstimate = camera.getVisionMesurement()
+        #     if poseEstimate:
+        #         poseEstimates.append(poseEstimate)
+        # for poseEstimate in poseEstimates:
+        #     self.drivetrain.addVisionPoseEstimate(*poseEstimate)
 
     @override
     def robotPeriodic(self) -> None:
-        # When robot is disable, we seed the IMU
-        if (
-            wpilib.DriverStation.isAutonomousEnabled()
-            or wpilib.DriverStation.isTeleopEnabled()
-        ):
-            self.addVisionMesurements()
+        # # When robot is disable, we seed the IMU
+        # if (
+        #     wpilib.DriverStation.isAutonomousEnabled()
+        #     or wpilib.DriverStation.isTeleopEnabled()
+        # ):
+        #     self.addVisionMesurements()
         self.drivetrain.updateOdometry()
         # self.drivetrain.log()
 
     @override
     def disabledPeriodic(self):
-        self.setRobotZero()
+        # self.setRobotZero()
         # Front
-        self.cameras[0].setRobotOrientation(self.drivetrain.getPose())
+        # self.cameras[0].setRobotOrientation(self.drivetrain.getPose())
         # Back
-        self.cameras[1].setRobotOrientation(
-            self.drivetrain.getPose().rotateBy(Rotation2d.fromDegrees(180))
-        )
+        #self.cameras[1].setRobotOrientation(
+        #    self.drivetrain.getPose().rotateBy(Rotation2d.fromDegrees(180))
+        #)
+        pass
 
     @override
     def teleopPeriodic(self) -> None:
@@ -284,7 +285,7 @@ class MyRobot(MagicRobot):
             self.teleopTerrainEditMode()
         else:
             self.teleopManualOperations()
-            self.teleopAutonomousCycle()
+            # self.teleopAutonomousCycle()
 
     def teleopTerrainEditMode(self):
         assert self.rikiStick.isEditMode()

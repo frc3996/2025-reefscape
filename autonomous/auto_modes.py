@@ -22,5 +22,5 @@ class RunAuto(AutonomousStateMachine):
 
         Make sure the drive is executed at the end!
         """
-        self.actionCycleAutonomous.engage()
-        self.drivetrain.drive(0, 0, 0, True)
+        # self.actionCycleAutonomous.engage()
+        self.drivetrain.drive(0.1, 0.1, 0, True)
