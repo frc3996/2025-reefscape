@@ -69,7 +69,7 @@ class RikiStick:
     def disableEditMode(self):
         self.editMode_0Non_1Red_2Blue = 0
 
-    def isProcessorPressed(self) -> bool:
+    def isProcessorButtonPressed(self) -> bool:
         return self.rikistick1.getRawButton(RIKISTICK1_BUTTON_PROCESSOR + 1)
 
     def getEditModeTeam(self) -> str:
