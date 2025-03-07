@@ -288,15 +288,17 @@ class MyRobot(MagicRobot):
 
     @override
     def teleopPeriodic(self) -> None:
-        # Always drive
-        self.teleopDrive()
-
+        angleSnapped = False
         # Snap angle
         if self.doAutoSnapAngle and (not self.rikiStick.isProcessorButtonPressed()) and self.snapAngleTarget is not None:
             targetPose = self.snapAngleTarget
             if tools.is_blue():
                 targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))
             self.snapAngle.engage(targetPose)
+            angleSnapped = True
+
+        # Always drive
+        self.teleopDrive(angleSnapped)
 
         # Sub-modes
         if self.rikiStick.isEditMode():
@@ -385,7 +387,7 @@ class MyRobot(MagicRobot):
 #         if self.isAutoCycling:
 #             self.actionCycle.engage()
 
-    def teleopDrive(self):
+    def teleopDrive(self, angleSnapped : bool):
         leftY = gamepad_helper.apply_deadzone(
             self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
         )
@@ -407,5 +409,7 @@ class MyRobot(MagicRobot):
             xSpeed *= scale
             ySpeed *= scale
 
-        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
+        rot = 0
+        if not angleSnapped:
+            rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
