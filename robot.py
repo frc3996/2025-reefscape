@@ -29,7 +29,7 @@ from wpimath.filter import SlewRateLimiter
 import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
-from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
+# from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
 # from autonomous.trajectory_follower import TrajectoryFollower
 from common import gamepad_helper, tools
 from common.limelight_helpers import LimelightHelpers
@@ -74,10 +74,10 @@ class MyRobot(MagicRobot):
     actionIntakeSortie: ActionIntakeSortie
     # actionTrajectoryFollower: TrajectoryFollower
 
-    ## SysId
-    actionAngularMaxVelocity: AngularMaxVelocity
-    actionMaxVelocity: MaxVelocity
-    actionMaxAccel: MaxAccel
+    # ## SysId
+    # actionAngularMaxVelocity: AngularMaxVelocity
+    # actionMaxVelocity: MaxVelocity
+    # actionMaxAccel: MaxAccel
 
     ## Manual Mode
     actionShoot: ActionShoot
