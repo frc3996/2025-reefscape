@@ -401,11 +401,14 @@ class MyRobot(MagicRobot):
 
         xSpeed = leftY * swervedrive.kMaxSpeed
         ySpeed = leftX * swervedrive.kMaxSpeed
-        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
-
-        if self.lift.get_lift_height() > self.lift.hauteurLevel3:
-            scale = 0.5
+        deltaHauteur = self.lift.get_lift_height() - self.lift.hauteurDeplacement
+        if deltaHauteur > 0:
+            scale = 1 - deltaHauteur / (
+                self.lift.hauteurLevel4 - self.lift.hauteurDeplacement
+            )
+            scale = max(0.1, scale)
             xSpeed *= scale
             ySpeed *= scale
 
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)
