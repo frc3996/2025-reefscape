@@ -349,9 +349,6 @@ class MyRobot(MagicRobot):
         if (self.gamepad_pilote is None) or (self.gamepad_pilote.getButtonCount() <= 0):
             return
 
-        if abs(self.gamepad_pilote.getPOV() - 180) < 5:
-            self.doAutoSnapAngle = not self.doAutoSnapAngle  # toggle
-
         # Shoot
         if self.gamepad_pilote.getAButton():
             self.actionShoot.start(LiftTarget.L1)
@@ -406,7 +403,7 @@ class MyRobot(MagicRobot):
             scale = 1 - deltaHauteur / (
                 self.lift.hauteurLevel4 - self.lift.hauteurDeplacement
             )
-            scale = max(0.1, scale)
+            scale = max(0.25, scale)
             xSpeed *= scale
             ySpeed *= scale
 
