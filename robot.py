@@ -37,6 +37,7 @@ from components.chariot import Chariot
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
+from components.climb import ActionClimb, Climb, ClimbTarget
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
@@ -68,7 +69,7 @@ class MyRobot(MagicRobot):
     actionCycleAutonomous: ActionCycleAutonomous
 
     ##### HIGH Level components first (components that use components) #####
-    # actionClimb: ActionClimb
+    actionClimb: ActionClimb
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
     actionTrajectoryFollower: TrajectoryFollower
@@ -102,8 +103,8 @@ class MyRobot(MagicRobot):
     # Lift
     lift: Lift
 
-    # # climb
-    # climb: Climb
+    # Climb
+    climb: Climb
 
     # Chariot
     chariot: Chariot
@@ -365,14 +366,9 @@ class MyRobot(MagicRobot):
 
         # Manual climb
         if self.gamepad_pilote.getStartButton():
-            pass
-            # self.actionClimb.engage(forward ou +1 direction)
+            self.actionClimb.doClimb(ClimbTarget.UP)
         elif self.gamepad_pilote.getBackButton():
-            pass
-            # self.actionClimb.engage(backward ou -1 direction)
-        else:
-            pass
-            # self.actionClimb.done()
+            self.actionClimb.doClimb(ClimbTarget.DOWN)
 
     def teleopAutonomousCycle(self):
         if self.rikiStick is None:

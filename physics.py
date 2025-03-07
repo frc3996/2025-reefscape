@@ -270,163 +270,162 @@ def applyColor(
             l.setColor(color)
 
 
-class ClimbSimulator:
-    def __init__(self, robot: "MyRobot", mech2d: wpilib.Mechanism2d):
-        self.robot: "MyRobot" = robot
-        self.mech2d: wpilib.Mechanism2d = mech2d
-
-        # Sim hardware
-        self.limitswitchPiston1Sim = wpilib.simulation.DIOSim(
-            self.robot.climb.piston_out_limitswitch_1
-        )
-        self.limitswitchPiston2Sim = wpilib.simulation.DIOSim(
-            self.robot.climb.piston_out_limitswitch_2
-        )
-        self.limitswitchCage1and2Sim = wpilib.simulation.DIOSim(
-            self.robot.climb.cage_in_limitswitch_1_and_2
-        )
-        # self.limitswitchCage2Sim = wpilib.simulation.DIOSim(
-        #     self.robot.climb.cage_in_limitswitch_2
-        # )
-
-        self.climbEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
-        self.guideEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
-
-        # Initial states for limitswitch
-        self.limitswitchPiston1Sim.setValue(False)
-        self.limitswitchPiston2Sim.setValue(False)
-        self.limitswitchCage1and2Sim.setValue(False)
-        # self.limitswitchCage2Sim.setValue(False)
-
-        # Root position for "p"
-        p_root = self.mech2d.getRoot("p_root", 0.1, 0.1)
-        p_left = p_root.appendLigament("p_main", 0.1, 90, 5)
-        p_top = p_left.appendLigament("p_curve1", 0.05, -90, 5)
-        p_right = p_top.appendLigament("p_curve2", 0.05, -90, 5)
-        p_bottom = p_right.appendLigament("p_curve3", 0.05, -90, 5)
-        self.p = [p_root, p_left, p_top, p_right, p_bottom]
-
-        # Root position for first "o"
-        o1_root = self.mech2d.getRoot("o1_root", 0.18, 0.1)
-        o1_left = o1_root.appendLigament("o1_top", 0.05, 90, 5)
-        o1_top = o1_left.appendLigament("o1_right", 0.05, -90, 5)
-        o1_right = o1_top.appendLigament("o1_bottom", 0.05, -90, 5)
-        o1_bottom = o1_right.appendLigament("o1_left", 0.05, -90, 5)
-        self.o1 = [o1_root, o1_left, o1_top, o1_right, o1_bottom]
-
-        # Root position for second "o"
-        o2_root = self.mech2d.getRoot("o2_root", 0.32, 0.1)
-        o2_left = o2_root.appendLigament("o2_top", 0.05, 90, 5)
-        o2_top = o2_left.appendLigament("o2_right", 0.05, -90, 5)
-        o2_right = o2_top.appendLigament("o2_bottom", 0.05, -90, 5)
-        o2_bottom = o2_right.appendLigament("o2_left", 0.05, -90, 5)
-        self.o2 = [o2_root, o2_left, o2_top, o2_right, o2_bottom]
-
-        # First L
-        l1_root = self.mech2d.getRoot("l1_root", 0.28, 0.15)
-        l1_left = l1_root.appendLigament("l1_left", 0.05, -90, 50)
-        self.l = [l1_root, l1_left]
-
-        # Root position for first "o"
-        o3_root = self.mech2d.getRoot("o3_root", 0.18, 0.05)
-        o3_left = o3_root.appendLigament("o3_top", 0.05, 90, 5)
-        o3_top = o3_left.appendLigament("o3_right", 0.05, -90, 5)
-        o3_right = o3_top.appendLigament("o3_bottom", 0.05, -90, 5)
-        o3_bottom = o3_right.appendLigament("o3_left", 0.05, -90, 5)
-        self.o3 = [o3_root, o3_left, o3_top, o3_right, o3_bottom]
-
-        # Root position for second "o"
-        o4_root = self.mech2d.getRoot("o4_root", 0.32, 0.05)
-        o4_left = o4_root.appendLigament("o4_top", 0.05, 90, 5)
-        o4_top = o4_left.appendLigament("o4_right", 0.05, -90, 5)
-        o4_right = o4_top.appendLigament("o4_bottom", 0.05, -90, 5)
-        o4_bottom = o4_right.appendLigament("o4_left", 0.05, -90, 5)
-        self.o4 = [o4_root, o4_left, o4_top, o4_right, o4_bottom]
-
-        # Root position for "q"
-        q_root = self.mech2d.getRoot("q_root", 0.45, 0.10)
-        q_top = q_root.appendLigament("q_top", 0.10, 90, 5)
-        q_right = q_top.appendLigament("q_right", 0.05, 90, 5)
-        q_bottom = q_right.appendLigament("q_bottom", 0.05, 90, 5)
-        q_left = q_bottom.appendLigament("q_left", 0.05, 90, 5)
-        self.q = [q_root, q_top, q_right, q_bottom, q_left]
-
-        self._angle: float = 0
-
-    def simulationPeriodic(self):
-        #### Guide motor
-        # green is clockwise, red is counterclockwise, blue is idle
-        rate = self.robot.climb.guideMotor.get()
-        _ = self.guideEncoderSim.setVelocity(
-            self.guideEncoderSim.getVelocity() * 0.95
-            + rate * self.robot.climb.kGuideMaxSpeed
-        )
-        _ = self.guideEncoderSim.setPosition(
-            self.guideEncoderSim.getPosition()
-            + self.guideEncoderSim.getVelocity() * 0.02
-        )
-        if rate == 0:
-            applyColor(BLUE, self.o1)
-            applyColor(BLUE, self.o2)
-        elif rate < 0:
-            applyColor(RED, self.o1)
-            applyColor(RED, self.o2)
-        elif rate > 0:
-            applyColor(GREEN, self.o1)
-            applyColor(GREEN, self.o2)
-
-        if self.guideEncoderSim.getVelocity() > self.robot.climb._guideSpeed:
-            self.limitswitchCage1and2Sim.setValue(True)
-            # self.limitswitchCage2Sim.setValue(True)
-            assert self.robot.climb.isCageIn()
-        elif self.guideEncoderSim.getVelocity() < 0.01:
-            self.limitswitchCage1and2Sim.setValue(False)
-            # self.limitswitchCage2Sim.setValue(False)
-            assert not self.robot.climb.isCageIn()
-
-        # Piston
-        if self.robot.climb._solenoid.get():
-            if self._angle < 45:
-                self._angle += 1
-            else:
-                self.limitswitchPiston1Sim.setValue(True)
-                self.limitswitchPiston2Sim.setValue(True)
-        else:
-            if self._angle > 0:
-                self._angle -= 1
-            else:
-                self.limitswitchPiston1Sim.setValue(False)
-                self.limitswitchPiston2Sim.setValue(False)
-        self.p[1].setAngle(90 - self._angle)
-        self.q[1].setAngle(90 + self._angle)
-
-        # Grab the cage
-        engaged = self.robot.climb.isCageSqueezed()
-        applyColor(RED if engaged > 0 else GREEN, self.p)
-        applyColor(RED if engaged > 0 else GREEN, self.q)
-
-        #### Climb motor
-        rate = self.robot.climb.climbMain.get()
-        _ = self.climbEncoderSim.setVelocity(
-            self.climbEncoderSim.getVelocity() * 0.95
-            + rate * self.robot.climb.kClimbMaxSpeed
-        )
-        _ = self.climbEncoderSim.setPosition(
-            self.climbEncoderSim.getPosition()
-            + self.climbEncoderSim.getVelocity() * 0.02
-        )
-        if rate == 0:
-            applyColor(BLUE, self.o3)
-            applyColor(BLUE, self.o4)
-        elif rate < 0:
-            applyColor(RED, self.o3)
-            applyColor(RED, self.o4)
-        elif rate > 0:
-            applyColor(GREEN, self.o3)
-            applyColor(GREEN, self.o4)
-
-        self.l[1].setLength(5 + self.climbEncoderSim.getPosition())
-
+# class ClimbSimulator:
+#     def __init__(self, robot: "MyRobot", mech2d: wpilib.Mechanism2d):
+#         self.robot: "MyRobot" = robot
+#         self.mech2d: wpilib.Mechanism2d = mech2d
+# 
+#         # Sim hardware
+#         self.limitswitchPiston1Sim = wpilib.simulation.DIOSim(
+#             self.robot.climb.piston_out_limitswitch_1
+#         )
+#         self.limitswitchPiston2Sim = wpilib.simulation.DIOSim(
+#             self.robot.climb.piston_out_limitswitch_2
+#         )
+#         self.limitswitchCage1and2Sim = wpilib.simulation.DIOSim(
+#             self.robot.climb.cage_in_limitswitch_1_and_2
+#         )
+#         # self.limitswitchCage2Sim = wpilib.simulation.DIOSim(
+#         #     self.robot.climb.cage_in_limitswitch_2
+#         # )
+# 
+#         self.climbEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.climbMain)
+#         self.guideEncoderSim = rev.SparkRelativeEncoderSim(self.robot.climb.guideMotor)
+# 
+#         # Initial states for limitswitch
+#         self.limitswitchPiston1Sim.setValue(False)
+#         self.limitswitchPiston2Sim.setValue(False)
+#         self.limitswitchCage1and2Sim.setValue(False)
+#         # self.limitswitchCage2Sim.setValue(False)
+# 
+#         # Root position for "p"
+#         p_root = self.mech2d.getRoot("p_root", 0.1, 0.1)
+#         p_left = p_root.appendLigament("p_main", 0.1, 90, 5)
+#         p_top = p_left.appendLigament("p_curve1", 0.05, -90, 5)
+#         p_right = p_top.appendLigament("p_curve2", 0.05, -90, 5)
+#         p_bottom = p_right.appendLigament("p_curve3", 0.05, -90, 5)
+#         self.p = [p_root, p_left, p_top, p_right, p_bottom]
+# 
+#         # Root position for first "o"
+#         o1_root = self.mech2d.getRoot("o1_root", 0.18, 0.1)
+#         o1_left = o1_root.appendLigament("o1_top", 0.05, 90, 5)
+#         o1_top = o1_left.appendLigament("o1_right", 0.05, -90, 5)
+#         o1_right = o1_top.appendLigament("o1_bottom", 0.05, -90, 5)
+#         o1_bottom = o1_right.appendLigament("o1_left", 0.05, -90, 5)
+#         self.o1 = [o1_root, o1_left, o1_top, o1_right, o1_bottom]
+# 
+#         # Root position for second "o"
+#         o2_root = self.mech2d.getRoot("o2_root", 0.32, 0.1)
+#         o2_left = o2_root.appendLigament("o2_top", 0.05, 90, 5)
+#         o2_top = o2_left.appendLigament("o2_right", 0.05, -90, 5)
+#         o2_right = o2_top.appendLigament("o2_bottom", 0.05, -90, 5)
+#         o2_bottom = o2_right.appendLigament("o2_left", 0.05, -90, 5)
+#         self.o2 = [o2_root, o2_left, o2_top, o2_right, o2_bottom]
+# 
+#         # First L
+#         l1_root = self.mech2d.getRoot("l1_root", 0.28, 0.15)
+#         l1_left = l1_root.appendLigament("l1_left", 0.05, -90, 50)
+#         self.l = [l1_root, l1_left]
+# 
+#         # Root position for first "o"
+#         o3_root = self.mech2d.getRoot("o3_root", 0.18, 0.05)
+#         o3_left = o3_root.appendLigament("o3_top", 0.05, 90, 5)
+#         o3_top = o3_left.appendLigament("o3_right", 0.05, -90, 5)
+#         o3_right = o3_top.appendLigament("o3_bottom", 0.05, -90, 5)
+#         o3_bottom = o3_right.appendLigament("o3_left", 0.05, -90, 5)
+#         self.o3 = [o3_root, o3_left, o3_top, o3_right, o3_bottom]
+# 
+#         # Root position for second "o"
+#         o4_root = self.mech2d.getRoot("o4_root", 0.32, 0.05)
+#         o4_left = o4_root.appendLigament("o4_top", 0.05, 90, 5)
+#         o4_top = o4_left.appendLigament("o4_right", 0.05, -90, 5)
+#         o4_right = o4_top.appendLigament("o4_bottom", 0.05, -90, 5)
+#         o4_bottom = o4_right.appendLigament("o4_left", 0.05, -90, 5)
+#         self.o4 = [o4_root, o4_left, o4_top, o4_right, o4_bottom]
+# 
+#         # Root position for "q"
+#         q_root = self.mech2d.getRoot("q_root", 0.45, 0.10)
+#         q_top = q_root.appendLigament("q_top", 0.10, 90, 5)
+#         q_right = q_top.appendLigament("q_right", 0.05, 90, 5)
+#         q_bottom = q_right.appendLigament("q_bottom", 0.05, 90, 5)
+#         q_left = q_bottom.appendLigament("q_left", 0.05, 90, 5)
+#         self.q = [q_root, q_top, q_right, q_bottom, q_left]
+# 
+#         self._angle: float = 0
+# 
+#     def simulationPeriodic(self):
+#         #### Guide motor
+#         # green is clockwise, red is counterclockwise, blue is idle
+#         rate = self.robot.climb.guideMotor.get()
+#         _ = self.guideEncoderSim.setVelocity(
+#             self.guideEncoderSim.getVelocity() * 0.95
+#             + rate * self.robot.climb.kGuideMaxSpeed
+#         )
+#         _ = self.guideEncoderSim.setPosition(
+#             self.guideEncoderSim.getPosition()
+#             + self.guideEncoderSim.getVelocity() * 0.02
+#         )
+#         if rate == 0:
+#             applyColor(BLUE, self.o1)
+#             applyColor(BLUE, self.o2)
+#         elif rate < 0:
+#             applyColor(RED, self.o1)
+#             applyColor(RED, self.o2)
+#         elif rate > 0:
+#             applyColor(GREEN, self.o1)
+#             applyColor(GREEN, self.o2)
+# 
+#         if self.guideEncoderSim.getVelocity() > self.robot.climb._guideSpeed:
+#             self.limitswitchCage1and2Sim.setValue(True)
+#             # self.limitswitchCage2Sim.setValue(True)
+#             assert self.robot.climb.isCageIn()
+#         elif self.guideEncoderSim.getVelocity() < 0.01:
+#             self.limitswitchCage1and2Sim.setValue(False)
+#             # self.limitswitchCage2Sim.setValue(False)
+#             assert not self.robot.climb.isCageIn()
+# 
+#         # Piston
+#         if self.robot.climb._solenoid.get():
+#             if self._angle < 45:
+#                 self._angle += 1
+#             else:
+#                 self.limitswitchPiston1Sim.setValue(True)
+#                 self.limitswitchPiston2Sim.setValue(True)
+#         else:
+#             if self._angle > 0:
+#                 self._angle -= 1
+#             else:
+#                 self.limitswitchPiston1Sim.setValue(False)
+#                 self.limitswitchPiston2Sim.setValue(False)
+#         self.p[1].setAngle(90 - self._angle)
+#         self.q[1].setAngle(90 + self._angle)
+# 
+#         # Grab the cage
+#         engaged = self.robot.climb.isCageSqueezed()
+#         applyColor(RED if engaged > 0 else GREEN, self.p)
+#         applyColor(RED if engaged > 0 else GREEN, self.q)
+# 
+#         #### Climb motor
+#         rate = self.robot.climb.climbMain.get()
+#         _ = self.climbEncoderSim.setVelocity(
+#             self.climbEncoderSim.getVelocity() * 0.95
+#             + rate * self.robot.climb.kClimbMaxSpeed
+#         )
+#         _ = self.climbEncoderSim.setPosition(
+#             self.climbEncoderSim.getPosition()
+#             + self.climbEncoderSim.getVelocity() * 0.02
+#         )
+#         if rate == 0:
+#             applyColor(BLUE, self.o3)
+#             applyColor(BLUE, self.o4)
+#         elif rate < 0:
+#             applyColor(RED, self.o3)
+#             applyColor(RED, self.o4)
+#         elif rate > 0:
+#             applyColor(GREEN, self.o3)
+#             applyColor(GREEN, self.o4)
+# 
+#         self.l[1].setLength(5 + self.climbEncoderSim.getPosition())
 
 class PhysicsEngine:
     def __init__(self, physics_controller: PhysicsInterface, robot: "MyRobot"):

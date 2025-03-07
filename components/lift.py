@@ -49,7 +49,7 @@ class Lift:
     ignoringInput = False
 
     # hauteur cible
-    hauteurCible = 0  # TODO quelque chose d'intelligent ici
+    hauteurCible = 0
 
     def setup(self):
         """
