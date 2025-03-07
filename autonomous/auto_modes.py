@@ -14,7 +14,7 @@ kRunAutoSpeedFactor : float = 0.5
 class RunAuto(AutonomousStateMachine):
     DEFAULT: bool = True
     MODE_NAME: str = "RunAuto"
-    PATH_NAME: str = "RunAuto"
+    PATH_NAME: str = ""
 
     drivetrain: SwerveDrive
     actionShoot : ActionShoot
