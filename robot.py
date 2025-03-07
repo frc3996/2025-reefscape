@@ -43,8 +43,7 @@ from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
 from components.rikistick import RikiStick
-from components.robot_actions import (ActionCycle, ActionCycleAutonomous,
-                                      ActionIntake, ActionShoot, ActionStow)
+from components.robot_actions import (ActionIntake, ActionShoot, ActionStow)
 from components.swervemodule import SwerveModule
 
 class MyRobot(MagicRobot):
@@ -66,8 +65,8 @@ class MyRobot(MagicRobot):
 
     ##### Auto mode #####
     runAuto: RunAuto
-    actionCycle: ActionCycle
-    actionCycleAutonomous: ActionCycleAutonomous
+    # actionCycle: ActionCycle
+    # actionCycleAutonomous: ActionCycleAutonomous
 
     ##### HIGH Level components first (components that use components) #####
     actionClimb: ActionClimb
@@ -378,13 +377,14 @@ class MyRobot(MagicRobot):
             self.actionClimb.doClimb(ClimbTarget.DOWN)
 
     def teleopAutonomousCycle(self):
-        if self.rikiStick is None:
-            self.isAutoCycling = False
-        elif self.rikiStick.getKillSwitch():
-            self.isAutoCycling = False
-
-        if self.isAutoCycling:
-            self.actionCycle.engage()
+        pass
+#         if self.rikiStick is None:
+#             self.isAutoCycling = False
+#         elif self.rikiStick.getKillSwitch():
+#             self.isAutoCycling = False
+# 
+#         if self.isAutoCycling:
+#             self.actionCycle.engage()
 
     def teleopDrive(self):
         leftY = gamepad_helper.apply_deadzone(
