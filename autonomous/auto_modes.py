@@ -30,20 +30,27 @@ class RunAuto(AutonomousStateMachine):
 
     @state(first=True)
     def move(self):
-        self.drivetrain.drive(0, 0, 0, True)
-        self.done()
-        return
 
         print("Run auto mode: moving state")
         distanceTraveled = self.drivetrain.getPose().translation().distance(self.initialPose.translation())
         if distanceTraveled >= self.kDistanceToTravel:
             self.next_state("shoot")
         else:
+            # voltage = 3.0
+            # self.drivetrain.frontLeft.driveMotor.setVoltage(voltage)
+            # self.drivetrain.frontRight.driveMotor.setVoltage(voltage)
+            # self.drivetrain.backLeft.driveMotor.setVoltage(voltage)
+            # self.drivetrain.backRight.driveMotor.setVoltage(voltage)
             self.drivetrain.drive(kMaxSpeed * kRunAutoSpeedFactor, 0, 0, True)
 
     @state
     def shoot(self):
         print("Run auto mode: shooting state" )
+        # voltage = 0.0
+        # self.drivetrain.frontLeft.driveMotor.setVoltage(voltage)
+        # self.drivetrain.frontRight.driveMotor.setVoltage(voltage)
+        # self.drivetrain.backLeft.driveMotor.setVoltage(voltage)
+        # self.drivetrain.backRight.driveMotor.setVoltage(voltage)
         self.drivetrain.drive(0, 0, 0, True)
         if not self.actionShoot.is_executing:
             print("Run auto mode: starting lift")
