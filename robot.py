@@ -292,7 +292,7 @@ class MyRobot(MagicRobot):
         self.teleopDrive()
 
         # Snap angle
-        if self.doAutoSnapAngle and self.snapAngleTarget is not None:
+        if self.doAutoSnapAngle and (not self.rikiStick.isProcessorButtonPressed()) and self.snapAngleTarget is not None:
             targetPose = self.snapAngleTarget
             if tools.is_blue():
                 targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))

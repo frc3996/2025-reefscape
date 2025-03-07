@@ -20,6 +20,8 @@ RIKISTICK2_BUTTON_TO_REEF_MAP: dict[int, int] = {  # zero-based, voir +1 ci-dess
     2: 12,
 }
 
+RIKISTICK1_BUTTON_PROCESSOR = 2
+
 RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP: dict[int, LiftTarget] = (
     {  # zero-based, voir +1 ci-dessous.
         2: LiftTarget.L1,
@@ -66,6 +68,9 @@ class RikiStick:
 
     def disableEditMode(self):
         self.editMode_0Non_1Red_2Blue = 0
+
+    def isProcessorPressed(self) -> bool:
+        return self.rikistick1.getRawButton(RIKISTICK1_BUTTON_PROCESSOR + 1)
 
     def getEditModeTeam(self) -> str:
         match self.editMode_0Non_1Red_2Blue:
