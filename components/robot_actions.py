@@ -8,7 +8,7 @@ from magicbot.state_machine import StateRef
 from wpimath import controller
 from wpimath.geometry import Pose2d
 
-from autonomous.trajectory_follower import TrajectoryFollower
+# from autonomous.trajectory_follower import TrajectoryFollower
 from common import tools
 # from common.arduino_light import I2CArduinoLight, LedMode
 from components.chariot import Chariot

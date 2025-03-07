@@ -30,7 +30,7 @@ import components.swervedrive as swervedrive
 import constants
 from autonomous.auto_modes import RunAuto
 from autonomous.sysid import AngularMaxVelocity, MaxAccel, MaxVelocity
-from autonomous.trajectory_follower import TrajectoryFollower
+# from autonomous.trajectory_follower import TrajectoryFollower
 from common import gamepad_helper, tools
 from common.limelight_helpers import LimelightHelpers
 from components import field, reefscape
@@ -72,7 +72,7 @@ class MyRobot(MagicRobot):
     actionClimb: ActionClimb
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
-    actionTrajectoryFollower: TrajectoryFollower
+    # actionTrajectoryFollower: TrajectoryFollower
 
     ## SysId
     actionAngularMaxVelocity: AngularMaxVelocity
@@ -372,9 +372,11 @@ class MyRobot(MagicRobot):
 
         # Manual climb
         if self.gamepad_pilote.getStartButton():
-            self.actionClimb.doClimb(ClimbTarget.UP)
+            pass
+            # self.actionClimb.doClimb(ClimbTarget.UP)
         elif self.gamepad_pilote.getBackButton():
-            self.actionClimb.doClimb(ClimbTarget.DOWN)
+            pass
+            # self.actionClimb.doClimb(ClimbTarget.DOWN)
 
     def teleopAutonomousCycle(self):
         pass
