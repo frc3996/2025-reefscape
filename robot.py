@@ -23,6 +23,7 @@ import wpimath.geometry
 from magicbot import MagicRobot
 from navx import AHRS
 from pathplannerlib.controller import Rotation2d
+from wpimath.geometry import Pose2d
 from wpimath.filter import SlewRateLimiter
 
 import components.swervedrive as swervedrive
@@ -115,17 +116,18 @@ class MyRobot(MagicRobot):
     # Networktables pour de la configuration et retour d'information
     nt: ntcore.NetworkTable
 
-    # Autonomous cycling toggle
-    isAutoCycling: bool = True
-
-    # Autonomous snap angle
-    isAutoSnapAngle: bool = True
-
     def __init__(self) -> None:
         super().__init__()
         self.leftXFilter: SlewRateLimiter = SlewRateLimiter(3)
         self.leftYFilter: SlewRateLimiter = SlewRateLimiter(3)
         self.rightXFilter: SlewRateLimiter = SlewRateLimiter(3)
+
+        # Autonomous cycling toggle
+        self.isAutoCycling: bool = False
+
+        # Autonomous snap angle
+        self.doAutoSnapAngle: bool = True
+        self.snapAngleTarget : Pose2d | None = None
 
     def createObjects(self):
         """
@@ -236,8 +238,17 @@ class MyRobot(MagicRobot):
         # # Use mode 2
         # for camera in self.cameras:
         #     LimelightHelpers.set_imu_mode(camera.cameraName, 2)
-
+        self.rikiStick.setupCallbacks(self.onReefMove, self.onStationMove, self.onCageMove)
         self.pdp.clearStickyFaults()
+
+    def onReefMove(self, reef: int):
+        self.snapAngleTarget = self.reefscape.getPose(self.reefscape.getReef(reef))
+
+    def onStationMove(self, station: int):
+        self.snapAngleTarget = self.reefscape.getCoralStationSlide(station, 2)
+
+    def onCageMove(self, cage: int):
+        self.snapAngleTarget = self.reefscape.getPose(self.reefscape.getCage(cage))
 
     def addVisionMesurements(self):
         pass
@@ -280,6 +291,10 @@ class MyRobot(MagicRobot):
     def teleopPeriodic(self) -> None:
         # Always drive
         self.teleopDrive()
+
+        # Snap angle
+        if self.doAutoSnapAngle and self.snapAngleTarget is not None:
+            self.snapAngle.engage(self.snapAngleTarget)
 
         # Sub-modes
         if self.rikiStick.isEditMode():
@@ -333,31 +348,20 @@ class MyRobot(MagicRobot):
             return
 
         if abs(self.gamepad_pilote.getPOV() - 180) < 5:
-            self.isAutoSnapAngle = not self.isAutoSnapAngle  # toggle
+            self.doAutoSnapAngle = not self.doAutoSnapAngle  # toggle
 
         # Shoot
         if self.gamepad_pilote.getAButton():
-            if self.isAutoSnapAngle:
-                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L1)
         elif self.gamepad_pilote.getBButton():
-            if self.isAutoSnapAngle:
-                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L2)
         elif self.gamepad_pilote.getXButton():
-            if self.isAutoSnapAngle:
-                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L3)
         elif self.gamepad_pilote.getYButton():
-            if self.isAutoSnapAngle:
-                self.snapAngle.engage(self.field_layout.getReefTargetPosition())
             self.actionShoot.start(LiftTarget.L4)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
-            stationPose = self.field_layout.getCoralTargetPosition()
-            if self.isAutoSnapAngle:
-                self.snapAngle.engage(stationPose)
             self.actionIntake.engage()
 
         # Deposit coral

@@ -29,16 +29,37 @@ RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP: dict[int, LiftTarget] = (
     }
 )
 
+RIKISTICK1_BUTTON_TO_CAGE: dict[int, int] = (
+    {  # zero-based, voir +1 ci-dessous.
+        13: 1,
+        14: 2,
+        15: 3
+    }
+)
+
+RikiStickCallback = Callable[[int], None]
 
 class RikiStick:
     editMode_0Non_1Red_2Blue = tunable(0)
-    reefTarget = 12  # [1, 12]
-    stationTarget = 2  # [1, 2]
-    liftHeightTarget: LiftTarget = LiftTarget.DEPLACEMENT
 
     def __init__(self) -> None:
         self.rikistick1: wpilib.Joystick = wpilib.Joystick(1)
         self.rikistick2: wpilib.Joystick = wpilib.Joystick(2)
+        self.reefTarget = 12  # [1, 12]
+        self.stationTarget = 2  # [1, 2]
+        self.liftHeightTarget: LiftTarget = LiftTarget.DEPLACEMENT
+        self.cageTarget = 1 # [1, 3]
+        self.onReefSelect: RikiStickCallback | None = None
+        self.onStationSelect: RikiStickCallback | None = None
+        self.onCageSelect: RikiStickCallback | None = None
+
+    def setupCallbacks(self,
+                       onReefSelect: RikiStickCallback,
+                       onStationSelect: RikiStickCallback,
+                       onCageSelect: RikiStickCallback):
+        self.onReefSelect = onReefSelect
+        self.onStationSelect = onStationSelect
+        self.onCageSelect = onCageSelect
 
     def isEditMode(self) -> bool:
         return self.editMode_0Non_1Red_2Blue != 0
@@ -104,6 +125,8 @@ class RikiStick:
             for button in RIKISTICK2_BUTTON_TO_REEF_MAP:
                 if self.rikistick2.getRawButton(button + 1):
                     self.reefTarget = RIKISTICK2_BUTTON_TO_REEF_MAP[button]
+                    if self.onReefSelect is not None:
+                        self.onReefSelect(self.reefTarget)
                     break
 
         if (not self.rikistick1 is None) and (self.rikistick1.getButtonCount() > 0):
@@ -111,9 +134,13 @@ class RikiStick:
             for i in range(1, 3):
                 if self.isStationButtonPressed(i):
                     self.stationTarget = i
+                    if self.onStationSelect is not None:
+                        self.onStationSelect(self.stationTarget)
                     break
-            # Lift targets
-            for button in RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP:
+            # Cage targets
+            for button in RIKISTICK1_BUTTON_TO_CAGE:
                 if self.rikistick1.getRawButton(button + 1):
-                    self.liftHeightTarget = RIKISTICK1_BUTTON_TO_LIFTTARGET_MAP[button]
+                    self.cageTarget = RIKISTICK1_BUTTON_TO_CAGE[button]
+                    if self.onCageSelect is not None:
+                        self.onCageSelect(self.cageTarget)
                     break
