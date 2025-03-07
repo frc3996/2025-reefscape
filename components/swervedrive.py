@@ -409,10 +409,5 @@ class SnapAngle(StateMachine):
         if abs(omega) <= 0.1:
             # self.angle_pid.reset(self.drivetrain.getPose().rotation().degrees())
             omega = 0
-        print(
-            omega,
-            self.drivetrain.getPose().rotation().degrees()
-            - self.target_pose.rotation().degrees(),
-        )
         cs = wpimath.kinematics.ChassisSpeeds(0, 0, omega)
         self.drivetrain.drive_auto(cs)

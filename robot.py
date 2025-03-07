@@ -294,7 +294,10 @@ class MyRobot(MagicRobot):
 
         # Snap angle
         if self.doAutoSnapAngle and self.snapAngleTarget is not None:
-            self.snapAngle.engage(self.snapAngleTarget)
+            targetPose = self.snapAngleTarget
+            if tools.is_blue():
+                targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))
+            self.snapAngle.engage(targetPose)
 
         # Sub-modes
         if self.rikiStick.isEditMode():
