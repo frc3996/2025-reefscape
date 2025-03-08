@@ -18,7 +18,7 @@ class RunAuto(AutonomousStateMachine):
     drivetrain: SwerveDrive
     actionShoot : ActionShoot
 
-    kDistanceToTravel = tunable(units.inchesToMeters(60)) # From CAD file
+    kDistanceToTravel = tunable(units.inchesToMeters(4)) # From CAD file
     kLiftTarget = LiftTarget.L3
 
     @override
