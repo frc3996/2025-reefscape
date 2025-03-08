@@ -38,7 +38,7 @@ from components.chariot import Chariot
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
-from components.climb import Climb, ActionClimbDeploy, ActionClimbPull
+from components.climb import Climb
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
@@ -82,8 +82,6 @@ class MyRobot(MagicRobot):
     actionShoot: ActionShoot
     actionIntake: ActionIntake
     actionStow: ActionStow
-    actionClimbDeploy: ActionClimbDeploy
-    actionClimbPull: ActionClimbPull
 
     ##### LOW Level components #####
 
@@ -128,6 +126,7 @@ class MyRobot(MagicRobot):
         # Autonomous snap angle
         self.doAutoSnapAngle: bool = True
         self.snapAngleTarget : Pose2d | None = None
+        self.doBrakeLock = False
 
     def createObjects(self):
         """
@@ -352,15 +351,6 @@ class MyRobot(MagicRobot):
         if (self.gamepad_pilote is None) or (self.gamepad_pilote.getButtonCount() <= 0):
             return
 
-        # Shoot
-        if self.gamepad_pilote.getAButton():
-            self.actionShoot.start(LiftTarget.L1)
-        elif self.gamepad_pilote.getBButton():
-            self.actionShoot.start(LiftTarget.L2)
-        elif self.gamepad_pilote.getXButton():
-            self.actionShoot.start(LiftTarget.L3)
-        elif self.gamepad_pilote.getYButton():
-            self.actionShoot.start(LiftTarget.L4)
 
         # Intake coral
         if self.gamepad_pilote.getLeftTriggerAxis() > 0.5:
@@ -370,15 +360,17 @@ class MyRobot(MagicRobot):
         if self.gamepad_pilote.getRightTriggerAxis() > 0.5:
             self.actionIntakeSortie.engage()
 
+        # Wheel lock toggle
+        if self.gamepad_pilote.getAButtonPressed() or self.gamepad_pilote.getBButtonPressed() or self.gamepad_pilote.getXButtonPressed() or self.gamepad_pilote.getYButtonPressed():
+            self.doBrakeLock = not self.doBrakeLock
+
         # Manual climb
         if self.gamepad_pilote.getStartButton():
-            self.actionClimbDeploy.engage()
-            targetPose = self.field_layout.getCageTargetPosition()
-            if tools.is_blue():
-                targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))
-            self.snapAngle.engage(targetPose)
+            self.climb.goUp()
         elif self.gamepad_pilote.getBackButton():
-            self.actionClimbPull.engage()
+            self.climb.goDown()
+        else:
+            self.climb.stop()
 
     def teleopAutonomousCycle(self):
         pass
@@ -391,6 +383,10 @@ class MyRobot(MagicRobot):
 #             self.actionCycle.engage()
 
     def teleopDrive(self, angleSnapped : bool):
+        if self.doBrakeLock:
+            self.drivetrain.brakeLock()
+            return
+
         leftY = gamepad_helper.apply_deadzone(
             self.leftYFilter.calculate(self.gamepad_pilote.getLeftY()), 0.2
         )

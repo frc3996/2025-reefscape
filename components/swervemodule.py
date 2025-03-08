@@ -286,6 +286,14 @@ class SwerveModule:
             wpimath.geometry.Rotation2d(self.turningEncoder.getDistance()),
         )
 
+    def brakeLock(self, angleDegrees : float):
+        currentRotation = wpimath.geometry.Rotation2d(self.turningEncoder.getDistance())
+        # Calculate the turning motor output from the turning PID controller.
+        turnOutput = self.turningPIDController.calculate(
+            currentRotation.radians(), wpimath.units.degrees(angleDegrees)
+        )
+        self.turningMotor.setVoltage(turnOutput)
+
     def setDesiredState(
         self,
         desiredState: wpimath.kinematics.SwerveModuleState,

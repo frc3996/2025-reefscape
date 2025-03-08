@@ -139,6 +139,12 @@ class SwerveDrive:
         self.autoChassisSpeeds = chassisSpeeds
         self.autoFeedforwards = driveFeedforwards
 
+    def brakeLock(self):
+        self.frontLeft.brakeLock(-45)
+        self.frontRight.brakeLock(45)
+        self.backLeft.brakeLock(45)
+        self.backRight.brakeLock(-45)
+
     def drive(
         self,
         xSpeed: float,
