@@ -38,7 +38,7 @@ from components.chariot import Chariot
 from components.field import FieldLayout
 from components.gyro import Gyro
 from components.intake import ActionIntakeEntree, ActionIntakeSortie, Intake
-from components.climb import ActionClimb, Climb, ClimbTarget
+from components.climb import Climb, ActionClimbDeploy, ActionClimbPull
 from components.lift import Lift, LiftTarget
 from components.limelight import LimeLightVision
 from components.reefscape import Reefscape
@@ -69,7 +69,6 @@ class MyRobot(MagicRobot):
     # actionCycleAutonomous: ActionCycleAutonomous
 
     ##### HIGH Level components first (components that use components) #####
-    actionClimb: ActionClimb
     actionIntakeEntree: ActionIntakeEntree
     actionIntakeSortie: ActionIntakeSortie
     # actionTrajectoryFollower: TrajectoryFollower
@@ -83,6 +82,8 @@ class MyRobot(MagicRobot):
     actionShoot: ActionShoot
     actionIntake: ActionIntake
     actionStow: ActionStow
+    actionClimbDeploy: ActionClimbDeploy
+    actionClimbPull: ActionClimbPull
 
     ##### LOW Level components #####
 
@@ -223,7 +224,7 @@ class MyRobot(MagicRobot):
 
     @override
     def autonomousInit(self):
-        pass
+        self.pdp.clearStickyFaults()
         # self.lockRobotZero = True
         # # Use mode 2
         # for camera in self.cameras:
@@ -371,11 +372,13 @@ class MyRobot(MagicRobot):
 
         # Manual climb
         if self.gamepad_pilote.getStartButton():
-            pass
-            # self.actionClimb.doClimb(ClimbTarget.UP)
+            self.actionClimbDeploy.engage()
+            targetPose = self.field_layout.getCageTargetPosition()
+            if tools.is_blue():
+                targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))
+            self.snapAngle.engage(targetPose)
         elif self.gamepad_pilote.getBackButton():
-            pass
-            # self.actionClimb.doClimb(ClimbTarget.DOWN)
+            self.actionClimbPull.engage()
 
     def teleopAutonomousCycle(self):
         pass

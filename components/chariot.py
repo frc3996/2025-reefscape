@@ -16,7 +16,6 @@ class ChariotTarget(Enum):
 
 CURRENT_LIMIT_AMP = 100
 
-
 class Chariot:
     __current_target: ChariotTarget = ChariotTarget.TARGET_STOP
     lift: Lift
@@ -62,7 +61,7 @@ class Chariot:
             # We're not moving where we need
             return
 
-        if abs(self.lift.get_lift_height() - self.lift.hauteurIntake) > 0.4:
+        if abs(self.lift.get_lift_height() - self.lift.hauteurIntake) > 0.05: # Prevent chariot from smashing into the climber
             # Allow moving back if we're near the intake height
             return
 

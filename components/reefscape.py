@@ -43,7 +43,7 @@ class Reefscape:
                 offsetRotation = Rotation2d.fromDegrees(0)
                 if not isFromEditMode:
                     offsetTranslation = Translation2d(ROBOT_HALF_LENGTH * rotation.cos(), ROBOT_HALF_LENGTH * rotation.sin())
-                    if cle[2] != "s": # TODO: Fix in map HACK Don't flip the station slides
+                    if cle[2] != "s" and cle[2] != "c": # TODO: Fix in map HACK Don't flip the station slides and cages
                         offsetRotation = Rotation2d.fromDegrees(180)
                 location = Translation2d(float(locationJSON[0]) + offsetTranslation.x,
                                          float(locationJSON[1]) + offsetTranslation.y)

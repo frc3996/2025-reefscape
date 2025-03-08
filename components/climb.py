@@ -13,7 +13,6 @@ Presented by
 HAAS
 """
 
-from enum import IntEnum
 import math
 from typing import override
 
@@ -22,19 +21,23 @@ import wpilib
 import wpimath.controller
 import wpimath.trajectory
 import wpimath.units
-from magicbot import StateMachine, tunable, will_reset_to
-from magicbot.state_machine import state, timed_state
+from magicbot import StateMachine, tunable
+from magicbot.state_machine import state
+
+from components.lift import Lift
+from components.chariot import Chariot
 
 import constants
 import common.tools as tools 
 
 class Climb:
-    kClimbMaxSpeed = tunable(0.1)
-    kClimbMaxAccel = tunable(0.1)
-    kClimbDistance = tunable(0.1)
-    kPID_P = tunable(3.0)
+    kClimbMaxSpeed = tunable(1.0)
+    kClimbMaxAccel = tunable(1.0)
+    kPID_P = tunable(1.0)
     kPID_I = tunable(0.0)
     kPID_D = tunable(0.0)
+    kDeployTargetDistance = tunable(5.0)
+    kPullTargetDistance = tunable(0.0)
 
     def __init__(self):
         # V = RPM * 60 * (C / GR)
@@ -78,20 +81,17 @@ class Climb:
             constants.DigitalIO.CLIMB_MAIN_LIMITSWITCH
         )
 
-    def climbUp(self):
-        self.targetClimbDistance = self.kClimbDistance
+    def doDeploy(self):
+        self.targetClimbDistance = self.kDeployTargetDistance
 
-    def climbDown(self):
-        self.targetClimbDistance = 0.0
-
-    def climbStop(self):
-        self.targetClimbDistance = self.climbEncoder.getPosition()
+    def doPull(self):
+        self.targetClimbDistance = self.kPullTargetDistance
 
     def atLimit(self) -> bool:
         return self.climb_limitswitch.get()
 
     def atGoal(self) -> bool:
-        return self.atLimit() or tools.float_equal(self.climbEncoder.getPosition(), self.targetClimbDistance, 0.05)
+        return tools.float_equal(self.climbEncoder.getPosition(), self.targetClimbDistance, 0.05)
 
     def execute(self):
         if self.atGoal():
@@ -101,36 +101,36 @@ class Climb:
                 self.climbEncoder.getPosition(), self.targetClimbDistance
             )
             climbSpeed = tools.clamp(climbSpeed, -self.kClimbMaxSpeed, self.kClimbMaxSpeed)
-            climbSpeed = tools.clamp(climbSpeed, -1.0, 1.0)
+            # climbSpeed = tools.clamp(climbSpeed, -1.0, 1.0)
             self.climbMain.set(climbSpeed)
-        # print(f"climbOutput {self.climbMain.get()}")
 
-class ClimbTarget(IntEnum):
-    DOWN = -1
-    STOP = 0
-    UP = 1
-
-class ActionClimb(StateMachine):
+class ActionClimbDeploy(StateMachine):
     climb: Climb
-
-    def __init__(self):
-        self.current_target = ClimbTarget.STOP
-
-    def doClimb(self, target: ClimbTarget, initial_state=None) -> None:
-        self.current_target = target
-        return super().engage(initial_state)
+    lift : Lift
+    chariot : Chariot
 
     @state(first=True)
-    def move_climb(self, initial_call: bool):
-        if self.current_target == ClimbTarget.UP:
-            self.climb.climbUp()
-        elif self.current_target == ClimbTarget.DOWN:
-            self.climb.climbDown()
-        else:
+    def move_lift_and_chariot(self, initial_call: bool):
+        if initial_call:
+            self.lift.go_zero()
+            self.chariot.move_front()
+            return
+
+        if self.lift.atGoal() and self.chariot.target_reached:
+            self.lift.lock() # safety
+            self.next_state("deploy")
+
+    @state
+    def deploy(self, initial_call: bool):
+        self.climb.doDeploy()
+        if self.climb.atGoal():
             self.done()
 
-    @override
-    def done(self):
-        self.current_target = ClimbTarget.STOP
-        self.climb.climbStop()
-        super().done()
+class ActionClimbPull(StateMachine):
+    climb: Climb
+
+    @state(first=True)
+    def pull_climb(self, initial_call: bool):
+        self.climb.doPull()
+        if self.climb.atGoal() or self.climb.atLimit():
+            self.done()

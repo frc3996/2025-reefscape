@@ -48,7 +48,9 @@ class ActionIntake(StateMachine):
             self.done()
 
         self.lift.go_intake()
-        self.next_state("start_intake")
+        # Prevent smashing into climber, maybe? prolly not needeed
+        if self.lift.atGoal():
+            self.next_state("start_intake")
 
     @state
     def start_intake(self):
@@ -67,7 +69,6 @@ class ActionIntake(StateMachine):
         print("ActionIntake", "done")
         self.actionStow.engage()
         return super().done()
-
 
 class ActionShoot(StateMachine):
     lift: Lift

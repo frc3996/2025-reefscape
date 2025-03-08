@@ -46,10 +46,10 @@ class Lift:
     lift_i = tunable(0.0)
     lift_d = tunable(0.0)
 
-    ignoringInput = False
-
-    # hauteur cible
-    hauteurCible = 0
+    def __init__(self):
+        self.ignoringInput = False
+        self.hauteurCible = 0
+        self.liftLocked = False # TODO merge this flag with ignoring input, keeping separate for now (at competition)
 
     def setup(self):
         """
@@ -119,11 +119,17 @@ class Lift:
         self.hauteurCible = self.get_lift_height()
         self.liftPIDController.reset(self.hauteurCible)
 
+    def lock(self):
+        self.liftLocked = True
+
     def limit_height(self):
         self.__limit_height = True
 
     def go_intake(self):
         self.__aller_a_hauteur(self.hauteurIntake)
+
+    def go_zero(self):
+        self.__aller_a_hauteur(0)
 
     def go_level1(self):
         self.__aller_a_hauteur(self.hauteurLevel1)
@@ -141,7 +147,7 @@ class Lift:
         self.__aller_a_hauteur(self.hauteurDeplacement)
 
     def __aller_a_hauteur(self, hauteur: float):
-        if not self.ignoringInput:
+        if not self.ignoringInput and not self.liftLocked:
             self.hauteurCible = hauteur
 
     @feedback
@@ -168,6 +174,9 @@ class Lift:
         Cette fonction est appelé à chaque itération/boucle
         C'est ici qu'on doit écrire la valeur dans nos moteurs
         """
+        if self.liftLocked:
+            return
+
         currentHeight = self.get_lift_height()
         targetHeight = self.get_hauteur_cible()
 
