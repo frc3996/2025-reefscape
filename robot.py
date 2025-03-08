@@ -295,7 +295,7 @@ class MyRobot(MagicRobot):
             targetPose = self.snapAngleTarget
             if tools.is_blue():
                 targetPose = targetPose.rotateBy(Rotation2d.fromDegrees(180))
-            self.snapAngle.engage(targetPose)
+            # self.snapAngle.engage(targetPose)
             angleSnapped = True
 
         # Always drive
@@ -412,7 +412,5 @@ class MyRobot(MagicRobot):
             xSpeed *= scale
             ySpeed *= scale
 
-        rot = 0
-        if not angleSnapped:
-            rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
+        rot = -1.0 * rightX * swervedrive.kMaxAngularSpeed
         self.drivetrain.drive(xSpeed, ySpeed, rot, True)

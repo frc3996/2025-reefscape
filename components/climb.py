@@ -13,6 +13,9 @@ Presented by
 HAAS
 """
 
+## UNTESTED CODE ##
+## DO NOT USE ##
+
 import math
 from typing import override
 
@@ -36,8 +39,8 @@ class Climb:
     kPID_P = tunable(1.0)
     kPID_I = tunable(0.0)
     kPID_D = tunable(0.0)
-    kDeployTargetDistance = tunable(5.0)
-    kPullTargetDistance = tunable(0.0)
+    kDeployTargetDistance = tunable(0.0)
+    kPullTargetDistance = tunable(5.0)
 
     def __init__(self):
         # V = RPM * 60 * (C / GR)
@@ -54,15 +57,19 @@ class Climb:
 
         # Set position conversion factor, revolution to distance
         climbMainConfig = rev.SparkBaseConfig()
-        _ = climbMainConfig.encoder.positionConversionFactor(self.kRpmToVelocity)
-        _ = climbMainConfig.encoder.velocityConversionFactor(self.kRpmToVelocity)
+        # _ = climbMainConfig.encoder.positionConversionFactor(self.kRpmToVelocity)
+        # _ = climbMainConfig.encoder.velocityConversionFactor(self.kRpmToVelocity)
+        _ = climbMainConfig.disableFollowerMode()
+        _ = climbMainConfig.setIdleMode(climbMainConfig.IdleMode.kBrake)
         _ = self.climbMain.configure(
             climbMainConfig,
             rev.SparkMax.ResetMode.kResetSafeParameters,
             rev.SparkMax.PersistMode.kPersistParameters,
         )
+        print("Climb motor: ", self.climbMain.isFollower(), self.climbMain.getDeviceId())
         self.climbEncoder: rev.SparkRelativeEncoder = self.climbMain.getEncoder()
-        self.climbEncoder.setPosition(0)
+        # self.climbMain.set(0)
+        # self.climbEncoder.setPosition(0)
 
         self.climbPID: wpimath.controller.ProfiledPIDController = (
             wpimath.controller.ProfiledPIDController(
